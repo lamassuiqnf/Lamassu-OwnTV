@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
@@ -27,6 +28,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
 import org.koin.androidx.compose.koinViewModel
@@ -39,6 +41,10 @@ import tv.own.owntv.features.profiles.ProfilesViewModel
 import tv.own.owntv.features.setup.Onboarding
 import tv.own.owntv.features.shell.OwnTVShell
 import tv.own.owntv.features.shell.ShellViewModel
+import tv.own.owntv.lamassu.EntitlementActivationScreen
+import tv.own.owntv.lamassu.EntitlementCheckingScreen
+import tv.own.owntv.lamassu.EntitlementCoordinator
+import tv.own.owntv.lamassu.EntitlementGateState
 import tv.own.owntv.ui.theme.BlurredBackdrop
 import tv.own.owntv.ui.theme.LocalBackground
 import tv.own.owntv.ui.theme.LocalBlurredBackdrop
@@ -97,6 +103,7 @@ open class MainActivity : ComponentActivity() {
     private val heroPreviewEngine: tv.own.owntv.player.HeroPreviewEngine by inject()
     private val engines: tv.own.owntv.player.PlaybackEngines by inject()
     private val handOff: tv.own.owntv.features.pip.AppHandOff by inject()
+    private val entitlementCoordinator: EntitlementCoordinator by inject()
     // Activity-scoped: the same instance Compose retrieves via koinViewModel() inside setContent.
     private val shellViewModel: ShellViewModel by viewModel()
     // The sole locale authority (SharedPreferences-backed; see docs/internationalization.md 0b).
@@ -412,6 +419,29 @@ open class MainActivity : ComponentActivity() {
                         if (background.showsPicture) BackgroundLayer(background, blurred)
 
                         Box(modifier = Modifier.fillMaxSize()) {
+                        val entitlementScope = rememberCoroutineScope()
+                        val entitlementGate by entitlementCoordinator.gateState.collectAsStateWithLifecycle()
+                        val entitlementBusy by entitlementCoordinator.busy.collectAsStateWithLifecycle()
+                        val entitlementError by entitlementCoordinator.errorAr.collectAsStateWithLifecycle()
+                        val entitlementStatus by entitlementCoordinator.statusAr.collectAsStateWithLifecycle()
+                        val entitlementImportProgress by entitlementCoordinator.importProgressPercent.collectAsStateWithLifecycle()
+                        val remoteConfig by entitlementCoordinator.remoteConfig.collectAsStateWithLifecycle()
+                        LaunchedEffect(Unit) {
+                            contentReady = true
+                            entitlementCoordinator.evaluate()
+                        }
+                        LaunchedEffect(entitlementGate) {
+                            if (entitlementGate !is EntitlementGateState.Allowed &&
+                                entitlementGate !is EntitlementGateState.ConnectionGrace
+                            ) {
+                                startupSettled = true
+                            }
+                        }
+                        when (entitlementGate) {
+                            EntitlementGateState.Checking -> EntitlementCheckingScreen()
+                            EntitlementGateState.Allowed,
+                            is EntitlementGateState.ConnectionGrace,
+                            -> {
                         val profile = activeProfileId
                         when {
                             profile == null || !profilesLoaded -> Unit // active id / Room list loading
@@ -487,6 +517,32 @@ open class MainActivity : ComponentActivity() {
                             // the shell. The known loading/onboarding/gate cases are above; a blank
                             // frame is safer than rendering protected content if a new state is added.
                             else -> Unit
+                        }
+                            }
+                            else -> {
+                                EntitlementActivationScreen(
+                                    gate = entitlementGate,
+                                    busy = entitlementBusy,
+                                    errorAr = entitlementError,
+                                    statusAr = entitlementStatus,
+                                    importProgressPercent = entitlementImportProgress,
+                                    freeModeEnabled = remoteConfig.freeModeEnabled,
+                                    telegramUrl = remoteConfig.telegramUrl,
+                                    telegramUsername = remoteConfig.telegramUsername,
+                                    subscriptionPrices = remoteConfig.subscriptionPrices,
+                                    onActivateFree = {
+                                        entitlementScope.launch { entitlementCoordinator.activateFree() }
+                                    },
+                                    onActivateCode = { code ->
+                                        entitlementScope.launch { entitlementCoordinator.activateCode(code) }
+                                    },
+                                    onRetry = {
+                                        entitlementScope.launch {
+                                            entitlementCoordinator.evaluate(forceRefresh = true)
+                                        }
+                                    },
+                                )
+                            }
                         }
                         } // end foreground Box (above the background layer)
                     }

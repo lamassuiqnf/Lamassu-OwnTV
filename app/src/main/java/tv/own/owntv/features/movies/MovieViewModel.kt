@@ -1091,7 +1091,6 @@ class MovieViewModel(
         const val TAG = "OwnTVHome"
         val defaultRail = listOf(
             LiveRailItem(LiveKey.Favorites, icon = OwnTVIcon.FAVORITE),
-            LiveRailItem(LiveKey.History, icon = OwnTVIcon.HISTORY),
             LiveRailItem(LiveKey.All),
         )
     }

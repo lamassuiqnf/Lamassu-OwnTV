@@ -4,6 +4,7 @@ import tv.own.owntv.features.sports.SportsPlayback
 import tv.own.owntv.features.pip.PictureInPicture
 import tv.own.owntv.features.sports.SportsSettingsViewModel
 import tv.own.owntv.features.sports.SportsViewModel
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -42,6 +43,15 @@ import tv.own.owntv.features.setup.DisplaySizeViewModel
 import tv.own.owntv.features.setup.SetupViewModel
 import tv.own.owntv.features.shell.ShellViewModel
 import tv.own.owntv.features.subtitles.SubtitleSearchViewModel
+import tv.own.owntv.lamassu.ContentOverlayStore
+import tv.own.owntv.lamassu.EntitlementAccessStore
+import tv.own.owntv.lamassu.EntitlementApiClient
+import tv.own.owntv.lamassu.EntitlementCacheStore
+import tv.own.owntv.lamassu.EntitlementCoordinator
+import tv.own.owntv.lamassu.HomeContentRepository
+import tv.own.owntv.lamassu.InstallIdStore
+import tv.own.owntv.lamassu.LamassuBootstrap
+import tv.own.owntv.lamassu.ManagedSourceProvisioner
 
 /**
  * Root Koin module. Each feature will contribute its own bindings as the app grows;
@@ -54,6 +64,25 @@ import tv.own.owntv.features.subtitles.SubtitleSearchViewModel
  * reordering is safe and a missing binding fails immediately, naming the type.
  */
 val appModule = module {
+    single { InstallIdStore(androidContext()) }
+    single { EntitlementCacheStore(androidContext()) }
+    singleOf(::EntitlementAccessStore)
+    singleOf(::ContentOverlayStore)
+    singleOf(::EntitlementApiClient)
+    single { HomeContentRepository(get()) }
+    single { ManagedSourceProvisioner(androidContext(), get(), get(), get(), get()) }
+    single { EntitlementCoordinator(androidContext(), get(), get(), get(), get(), get(), get()) }
+    single {
+        LamassuBootstrap(
+            context = androidContext(),
+            settings = get(),
+            profileDao = get(),
+            profiles = get(),
+            homeContent = get(),
+            scope = get(),
+        )
+    }
+
     viewModelOf(::ShellViewModel)
     // Home's rails are core's, shared with the phone app; the view model only decorates them.
     // LiveEpgReader is registered because GuideReader now needs one: a guide row whose stored data

@@ -1415,7 +1415,6 @@ class SeriesViewModel(
         const val GRID_DWELL_MS = 1_000L
         val defaultRail = listOf(
             LiveRailItem(LiveKey.Favorites, icon = OwnTVIcon.FAVORITE),
-            LiveRailItem(LiveKey.History, icon = OwnTVIcon.HISTORY),
             LiveRailItem(LiveKey.All),
         )
     }

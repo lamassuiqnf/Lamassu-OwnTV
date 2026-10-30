@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ColorScheme
 import androidx.tv.material3.MaterialTheme
@@ -105,16 +106,32 @@ fun OwnTVTheme(
         ThemeMode.SYSTEM -> systemInDarkTheme
     }
 
-    val colors = ownTvColors(
+    // Lamassu: force brand orange when no custom accent is set yet.
+    val resolvedAccent = customAccent.ifBlank { tv.own.owntv.lamassu.LamassuBrand.AccentHex }
+    val baseColors = ownTvColors(
         isDark = useDark,
         accent = accent,
-        customAccent = customAccent,
-        focusHighlight = focusHighlight,
+        customAccent = resolvedAccent,
+        focusHighlight = focusHighlight.ifBlank { resolvedAccent },
     )
+    val navy = tv.own.owntv.lamassu.LamassuBrand.Navy
+    val colors = if (useDark) {
+        baseColors.copy(
+            background = navy,
+            surface = navy,
+            surfaceContainerLowest = navy,
+            surfaceContainerLow = Color(0xFF1E1E32),
+            surfaceContainer = Color(0xFF22223A),
+            surfaceContainerHigh = Color(0xFF2A2A45),
+            surfaceContainerHighest = Color(0xFF323250),
+        )
+    } else {
+        baseColors
+    }
 
     CompositionLocalProvider(
         LocalOwnTVColors provides colors,
-        LocalStagePalette provides if (useDark) StagePalette.Dark else StagePalette.Light,
+        LocalStagePalette provides if (useDark) tv.own.owntv.lamassu.LamassuBrand.StageDark else StagePalette.Light,
         LocalThemeMode provides themeMode,
         LocalFocusBorderWidth provides focusBorderWidthDp.dp,
         LocalAnimationLevel provides animationLevel,

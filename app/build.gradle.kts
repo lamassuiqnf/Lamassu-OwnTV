@@ -39,12 +39,16 @@ android {
     // the repo. Gradle only reads gradle.properties from GRADLE_USER_HOME or the project dir, so this
     // one is loaded by hand. Declared here because defaultConfig below already needs it.
     val localSigningProps = Properties().apply {
-        val f = File("E:/MEGA/CODE/OwnTV_Gradle/owntv-signing.properties")
-        if (f.isFile) f.inputStream().use { load(it) }
+        val candidates = listOf(
+            File(System.getProperty("user.home"), ".owntv/owntv-signing.properties"),
+            File(System.getProperty("user.home"), "MEGA/CODE/OwnTV_Gradle/owntv-signing.properties"),
+            File("E:/MEGA/CODE/OwnTV_Gradle/owntv-signing.properties"),
+        )
+        candidates.firstOrNull { it.isFile }?.inputStream()?.use { load(it) }
     }
 
     defaultConfig {
-        applicationId = "tv.own.owntv"
+        applicationId = "com.iq.lamassu.owntv"
         minSdk = 26
         targetSdk = 36
         // CI injects these from the git tag (see .github/workflows/android.yml) so releases never
@@ -56,6 +60,12 @@ android {
         // LOCAL builds (i.e. debug), so we pin it to 99.99.99 — that way a dev build is always "newer"
         // than any published release and the in-app updater never offers an "update" while developing.
         versionName = System.getenv("VERSION_NAME") ?: "99.99.99"
+
+        buildConfigField(
+            "String",
+            "LAMASSU_API_BASE_URL",
+            "\"https://lamassucpanel.netlify.app\"",
+        )
 
         // Opt-in local diagnostic APKs keep the rolling playback trace enabled even when they are
         // release-signed (so they can update an installed production build without changing its data).

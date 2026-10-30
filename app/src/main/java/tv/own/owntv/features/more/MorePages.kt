@@ -61,24 +61,17 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import tv.own.owntv.BuildConfig
 import tv.own.owntv.R
-import tv.own.owntv.core.i18n.SupportedLocales
 import tv.own.owntv.core.model.MediaType
-import tv.own.owntv.core.update.UpdateManager
 import tv.own.owntv.features.downloads.recordingWhen
 import tv.own.owntv.features.home.ChannelPlate
 import tv.own.owntv.features.home.OnNowCard
 import tv.own.owntv.features.home.timeLeftText
 import tv.own.owntv.features.shell.components.ClearHistoryDialog
-import tv.own.owntv.features.shell.components.GITHUB_REPO
 import tv.own.owntv.features.shell.components.TELEGRAM_LINK
 import tv.own.owntv.features.shell.components.playbackDisplayName
-import tv.own.owntv.features.update.UpdateDialog
 import tv.own.owntv.player.PlaybackErrorLog
 import tv.own.owntv.player.displayText
-import tv.own.owntv.ui.components.BrandMark
 import tv.own.owntv.ui.components.MoveOrderOverlay
-import tv.own.owntv.ui.components.Wordmark
-import tv.own.owntv.ui.components.rememberAppliedIcon
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.components.OwnTVPopup
 import tv.own.owntv.ui.components.displayText
@@ -621,84 +614,179 @@ internal fun ErrorLogPage(setEntry: (() -> Boolean) -> Unit, onCountChanged: () 
 }
 
 // ---------------------------------------------------------------------------------------------
-// About
+// Subscription / Support / About (Lamassu)
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-internal fun AboutPage(vm: MoreCountsViewModel, entry: FocusRequester, onOpenLanguage: () -> Unit) {
-    val context = LocalContext.current
-    val manager: UpdateManager = koinInject()
-    val updateState by manager.state.collectAsStateWithLifecycle()
-    val checkedAt by vm.lastUpdateCheckAt.collectAsStateWithLifecycle()
-    var showUpdate by remember { mutableStateOf(false) }
-    val updateFocus = remember { FocusRequester() }
-    var updateWasOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(showUpdate) { if (showUpdate) updateWasOpen = true else if (updateWasOpen) { updateWasOpen = false; withFrameNanos { }; runCatching { updateFocus.requestFocus() } } }
-    val sep = stringResource(R.string.content_epg_bits_separator)
+internal fun SubscriptionPage(entry: FocusRequester) {
+    val entitlement: tv.own.owntv.lamassu.EntitlementCoordinator = koinInject()
+    val snap by entitlement.snapshot.collectAsStateWithLifecycle()
+    val busy by entitlement.busy.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     val accent = stageAccent.accent
+    val modeLabel = when (snap?.mode?.lowercase()) {
+        "free" -> stringResource(R.string.lamassu_sub_mode_free)
+        "subscription" -> stringResource(R.string.lamassu_sub_mode_subscription)
+        else -> stringResource(R.string.lamassu_sub_mode_none)
+    }
+    val maxDevices = snap?.maxDevices ?: 0
+    val devicesCap = if (maxDevices <= 0) {
+        stringResource(R.string.lamassu_sub_devices_unlimited)
+    } else {
+        maxDevices.toString()
+    }
+    val expires = snap?.expiresAt?.takeIf { it.isNotBlank() }
+        ?: stringResource(R.string.lamassu_sub_expires_none)
 
+    Column(
+        Modifier
+            .fillMaxSize()
+            .focusGroup()
+            .focusRequester(entry),
+        verticalArrangement = Arrangement.spacedBy(14.mpx),
+    ) {
+        Text(stringResource(R.string.lamassu_sub_title), style = stageText(32, 800), color = StageColors.Text)
+        Text(modeLabel, style = stageText(26, 700), color = accent)
+        Text(
+            stringResource(
+                R.string.lamassu_sub_status,
+                snap?.status?.ifBlank { null } ?: stringResource(R.string.lamassu_sub_unknown),
+            ),
+            style = stageText(18, 500),
+            color = StageColors.Muted,
+        )
+        Text(stringResource(R.string.lamassu_sub_expires, expires), style = stageText(18, 500), color = StageColors.Muted)
+        Text(
+            stringResource(R.string.lamassu_sub_devices, snap?.usedDevices ?: 0, devicesCap),
+            style = stageText(18, 500),
+            color = StageColors.Muted,
+        )
+        snap?.codePrefix?.takeIf { it.isNotBlank() }?.let {
+            Text(stringResource(R.string.lamassu_sub_code, it), style = stageText(18, 500), color = StageColors.Muted)
+        }
+        Text(
+            stringResource(R.string.lamassu_sub_hint),
+            style = stageText(16, 500).copy(lineHeight = 26.mpxSp),
+            color = StageColors.Dim,
+            modifier = Modifier.padding(top = 8.mpx).widthIn(max = 720.mpx),
+        )
+        StageTool(
+            if (busy) stringResource(R.string.lamassu_sub_refreshing) else stringResource(R.string.lamassu_sub_refresh),
+            onClick = {
+                if (!busy) scope.launch { entitlement.evaluate(forceRefresh = true) }
+            },
+            icon = OwnTVIcon.REFRESH,
+            boxed = true,
+            modifier = Modifier.padding(top = 12.mpx),
+        )
+    }
+}
+
+@Composable
+internal fun SupportPage(entry: FocusRequester, onOpenLanguage: () -> Unit) {
+    val accent = stageAccent.accent
+    Column(
+        Modifier
+            .fillMaxSize()
+            .focusGroup()
+            .focusRequester(entry),
+        verticalArrangement = Arrangement.spacedBy(14.mpx),
+    ) {
+        Text(stringResource(R.string.lamassu_support_title), style = stageText(32, 800), color = StageColors.Text)
+        Text(
+            stringResource(R.string.lamassu_support_body),
+            style = stageText(18, 500).copy(lineHeight = 28.mpxSp),
+            color = stageTone(Color(0xFFD3DCD8), StageColors.Body),
+            modifier = Modifier.widthIn(max = 760.mpx),
+        )
+        StageTile(Modifier.width(640.mpx).padding(top = 8.mpx)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(20.mpx), verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.lamassu_logo),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.size(110.mpx).clip(RoundedCornerShape(14.mpx)).background(Color(0xFF19192A)),
+                )
+                Column {
+                    Text(stringResource(R.string.settings_join_telegram), style = stageText(22, 800), color = StageColors.Text)
+                    Text(stringResource(R.string.lamassu_support_handle), style = stageText(20, 700), color = accent, modifier = Modifier.padding(top = 4.mpx))
+                    Text(TELEGRAM_LINK, style = stageText(16, 500), color = StageColors.Muted, modifier = Modifier.padding(top = 6.mpx))
+                }
+            }
+        }
+        StageTool(
+            stringResource(R.string.lamassu_language),
+            onClick = onOpenLanguage,
+            icon = OwnTVIcon.LANGUAGE,
+            boxed = true,
+            modifier = Modifier.padding(top = 10.mpx),
+        )
+    }
+}
+
+@Composable
+internal fun AboutPage(vm: MoreCountsViewModel, entry: FocusRequester, onOpenLanguage: () -> Unit) {
+    val accent = stageAccent.accent
     Column(Modifier.fillMaxSize().focusGroup()) {
         Row(horizontalArrangement = Arrangement.spacedBy(40.mpx), verticalAlignment = Alignment.CenterVertically) {
-            // The app's own icon (150) and the wordmark (300).
-            BrandMark(rememberAppliedIcon(), 150.mpx)
+            Image(
+                painter = painterResource(R.drawable.lamassu_logo),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier.size(150.mpx).clip(RoundedCornerShape(24.mpx)).background(Color(0xFF19192A)),
+            )
             Column {
-                Wordmark(300.mpx)
-                Row(Modifier.padding(top = 16.mpx), horizontalArrangement = Arrangement.spacedBy(14.mpx), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME), style = stageText(22, 700), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    // Only what a real check said: no tag before one has run.
-                    val tag = when (updateState) {
-                        UpdateManager.State.UpToDate -> stringResource(R.string.more_about_up_to_date)
-                        is UpdateManager.State.Available -> stringResource(R.string.update_available)
-                        else -> null
-                    }
-                    tag?.let {
-                        Text(it.uppercase(androidx.compose.ui.platform.LocalConfiguration.current.locales[0]), style = stageText(13, 800, 0.05.em), color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.background(accent.copy(alpha = 0.2f), RoundedCornerShape(6.mpx)).padding(horizontal = 7.mpx, vertical = 3.mpx))
-                    }
-                }
+                Text(stringResource(R.string.app_name), style = stageText(48, 800), color = Color(0xFFFF9500), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    listOfNotNull(
-                        checkedAt?.let { stringResource(R.string.more_about_checked, recordingWhen(it)) },
-                        stringResource(R.string.more_about_license),
-                    ).joinToString(sep),
-                    style = stageText(17, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME),
+                    style = stageText(22, 700),
+                    color = StageColors.Text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 16.mpx),
+                )
+                Text(
+                    stringResource(R.string.more_about_license),
+                    style = stageText(17, 500),
+                    color = StageColors.Muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 6.mpx),
                 )
             }
         }
-        Text(stringResource(R.string.more_about_description), style = stageText(18, 500).copy(lineHeight = 29.mpxSp), color = stageTone(Color(0xFFD3DCD8), StageColors.Body),
-            modifier = Modifier.padding(top = 26.mpx).widthIn(max = 860.mpx))
-        Text(stringResource(R.string.settings_contributions), style = stageText(16, 500), color = StageColors.Dim,
-            modifier = Modifier.padding(top = 10.mpx, bottom = 24.mpx).widthIn(max = 860.mpx))
+        Text(
+            stringResource(R.string.more_about_description),
+            style = stageText(18, 500).copy(lineHeight = 29.mpxSp),
+            color = stageTone(Color(0xFFD3DCD8), StageColors.Body),
+            modifier = Modifier.padding(top = 26.mpx).widthIn(max = 860.mpx),
+        )
+        Text(
+            stringResource(R.string.settings_contributions),
+            style = stageText(16, 500),
+            color = StageColors.Dim,
+            modifier = Modifier.padding(top = 10.mpx, bottom = 24.mpx).widthIn(max = 860.mpx),
+        )
         StageTile(Modifier.width(640.mpx)) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.mpx), verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(R.drawable.telegram_qr),
-                    contentDescription = stringResource(R.string.settings_telegram_qr),
-                    modifier = Modifier.size(150.mpx).clip(RoundedCornerShape(14.mpx)).background(Color.White),
+                    painter = painterResource(R.drawable.lamassu_logo),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.size(150.mpx).clip(RoundedCornerShape(14.mpx)).background(Color(0xFF19192A)),
                 )
                 Column {
                     Text(stringResource(R.string.settings_join_telegram), style = stageText(22, 800), color = StageColors.Text)
-                    Text(TELEGRAM_LINK, style = stageText(17, 500), color = accent, modifier = Modifier.padding(top = 4.mpx))
+                    Text(stringResource(R.string.lamassu_support_handle), style = stageText(17, 700), color = accent, modifier = Modifier.padding(top = 4.mpx))
                     Text(stringResource(R.string.more_about_scan), style = stageText(15.5f, 500), color = StageColors.Muted, modifier = Modifier.padding(top = 8.mpx))
                 }
             }
         }
         Row(Modifier.padding(top = 22.mpx), horizontalArrangement = Arrangement.spacedBy(10.mpx)) {
-            // The link is for reading: a TV has no browser to open it in.
-            Row(
-                Modifier.height(44.mpx).background(StageColors.ControlFill, RoundedCornerShape(15.mpx)).padding(horizontal = 16.mpx),
-                horizontalArrangement = Arrangement.spacedBy(9.mpx), verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OwnTVIcon(OwnTVIcon.NETWORK, StageColors.Text, Modifier.size(18.mpx))
-                Text(GITHUB_REPO, style = stageText(16, 700), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            val languages = SupportedLocales.all.count { it.packaged }
-            StageTool(pluralStringResource(R.plurals.more_about_languages, languages, languages), onClick = onOpenLanguage, icon = OwnTVIcon.LIST, boxed = true, modifier = Modifier.focusRequester(entry))
-            StageTool(stringResource(R.string.settings_check_updates), onClick = { showUpdate = true }, icon = OwnTVIcon.REFRESH, boxed = true, modifier = Modifier.focusRequester(updateFocus))
+            StageTool(
+                stringResource(R.string.lamassu_language),
+                onClick = onOpenLanguage,
+                icon = OwnTVIcon.LIST,
+                boxed = true,
+                modifier = Modifier.focusRequester(entry),
+            )
         }
-    }
-    if (showUpdate) {
-        UpdateDialog(onDismiss = { showUpdate = false }, checkOnOpen = true)
     }
 }

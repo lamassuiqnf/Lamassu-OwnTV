@@ -40,7 +40,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.em
@@ -54,7 +53,6 @@ import tv.own.owntv.R
 import tv.own.owntv.features.profiles.PinPrompt
 import tv.own.owntv.features.settings.BackupScreen
 import tv.own.owntv.features.settings.DeveloperScreen
-import tv.own.owntv.features.settings.LocalSyncScreen
 import tv.own.owntv.features.settings.SettingsViewModel
 import tv.own.owntv.features.settings.lock.SettingsPinViewModel
 import tv.own.owntv.core.settings.guardsPage
@@ -63,18 +61,20 @@ import tv.own.owntv.player.PlaybackErrorLog
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.stage.StageGroupItem
 import tv.own.owntv.ui.stage.StageKeyHints
-import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.stage.stageGlass
 import tv.own.owntv.ui.theme.StageColors
 import tv.own.owntv.ui.theme.mpx
-import tv.own.owntv.ui.theme.stageAccent
 import tv.own.owntv.ui.theme.stageText
 
 /** The sheet's items, top to bottom. [DEVELOPER] exists only in local builds (BuildConfig.DEV_TOOLS). */
-private enum class MoreItem { SETTINGS, FAVORITES, HISTORY, BACKUP, LOCAL_SYNC, ERROR_LOG, ABOUT, DEVELOPER }
+private enum class MoreItem {
+    SETTINGS, FAVORITES, SUBSCRIPTION, SUPPORT, BACKUP, ERROR_LOG, ABOUT, DEVELOPER,
+    // Kept for saved-state compatibility; never shown in the Lamassu sheet.
+    HISTORY, LOCAL_SYNC,
+}
 
 /** The pages that ask for the Settings PIN when it is on. */
-private val PIN_PAGES = setOf(MoreItem.BACKUP, MoreItem.LOCAL_SYNC, MoreItem.DEVELOPER)
+private val PIN_PAGES = setOf(MoreItem.BACKUP, MoreItem.DEVELOPER)
 
 /**
  * More: the glass section sheet, topped by the profile, and one page on the right
@@ -147,10 +147,7 @@ fun MoreScreen(
     BackHandler(enabled = pageFocused) { backToSheet() }
 
     val favorites by vm.favorites.collectAsStateWithLifecycle()
-    val history by vm.history.collectAsStateWithLifecycle()
-    val sync by vm.sync.collectAsStateWithLifecycle()
     val lastBackup by vm.lastBackup.collectAsStateWithLifecycle()
-    val playlists by vm.playlistCount.collectAsStateWithLifecycle()
     val pinned by settingsVm.quickPinnedKeys.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var logVersion by remember { mutableIntStateOf(0) }
@@ -172,7 +169,7 @@ fun MoreScreen(
                 }
                 .focusGroup(),
         ) {
-            ProfileRow(profileName, playlistLabel, playlists, avatarId, avatarPath, onSwitchProfile, onPickAvatar)
+            ProfileRow(profileName, avatarId, avatarPath)
             val item = @Composable { it: MoreItem, icon: OwnTVIcon, label: String, value: String?, warn: Boolean ->
                 StageGroupItem(
                     text = label, icon = icon, value = value, warn = warn,
@@ -184,17 +181,16 @@ fun MoreScreen(
             item(MoreItem.SETTINGS, OwnTVIcon.SETTINGS, stringResource(R.string.common_nav_settings), null, false)
             GroupLabel(stringResource(R.string.more_group_your_things))
             item(MoreItem.FAVORITES, OwnTVIcon.FAVORITE, stringResource(R.string.content_category_favorites), favorites.total.toString(), false)
-            item(MoreItem.HISTORY, OwnTVIcon.HISTORY, stringResource(R.string.content_category_history), history.total.toString(), false)
             GroupLabel(stringResource(R.string.more_group_keep_safe))
+            item(MoreItem.SUBSCRIPTION, OwnTVIcon.PERSON, stringResource(R.string.lamassu_more_subscription), null, false)
+            item(MoreItem.SUPPORT, OwnTVIcon.NETWORK, stringResource(R.string.lamassu_more_support), stringResource(R.string.lamassu_support_handle), false)
             item(
                 MoreItem.BACKUP, OwnTVIcon.DOWNLOADS, stringResource(R.string.settings_backup_restore),
                 lastBackup?.let { relativeShort(it.at) } ?: stringResource(R.string.common_never), lastBackup == null,
             )
-            item(MoreItem.LOCAL_SYNC, OwnTVIcon.PHONE, stringResource(R.string.local_sync_title), stringResource(if (sync.listening) R.string.common_on else R.string.common_off), false)
             GroupLabel(stringResource(R.string.settings_app_group))
             item(MoreItem.ERROR_LOG, OwnTVIcon.WARNING, stringResource(R.string.settings_playback_error_log), logCount.toString(), false)
             item(MoreItem.ABOUT, OwnTVIcon.INFO, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, false)
-            // Maintainer-only; DEV_TOOLS is a compile-time constant, so R8 removes it from published APKs.
             if (BuildConfig.DEV_TOOLS) item(MoreItem.DEVELOPER, OwnTVIcon.GEAR, "Developer", "DEV", false)
             Spacer(Modifier.weight(1f))
             StageKeyHints(
@@ -226,15 +222,15 @@ fun MoreScreen(
                     vm = vm, setEntry = setEntry,
                     onPlayChannel = onPlayChannel, onPlayMovie = { onPlayMovie(it, 0L) }, onOpenSeries = onOpenSeries,
                 )
-                MoreItem.HISTORY -> HistoryPage(
-                    vm = vm, setEntry = setEntry,
-                    onClearHistory = { settingsVm.clearWatchHistory(it) },
-                    onPlayChannel = onPlayChannel, onPlayMovie = onPlayMovie, onPlayEpisode = onPlayEpisode, onOpenSeries = onOpenSeries,
-                )
+                MoreItem.SUBSCRIPTION -> SubscriptionPage(entry = pageTarget)
+                MoreItem.SUPPORT -> SupportPage(entry = pageTarget, onOpenLanguage = { onOpenSettings(8, false) })
                 MoreItem.BACKUP -> BackupScreen(entry = pageTarget, modifier = Modifier.fillMaxSize())
-                MoreItem.LOCAL_SYNC -> LocalSyncScreen(entry = pageTarget, modifier = Modifier.fillMaxSize())
                 MoreItem.ERROR_LOG -> ErrorLogPage(setEntry = setEntry, onCountChanged = { logVersion++ })
                 MoreItem.ABOUT -> AboutPage(vm = vm, entry = pageTarget, onOpenLanguage = { onOpenSettings(8, false) })
+                MoreItem.HISTORY, MoreItem.LOCAL_SYNC -> {
+                    // Hidden in Lamassu; if restored from an old selection, fall back to Settings.
+                    LaunchedEffect(Unit) { chosen = MoreItem.SETTINGS }
+                }
                 MoreItem.DEVELOPER -> Box(Modifier.focusRequester(pageTarget).focusGroup()) { DeveloperScreen(onBack = backToSheet) }
             }
         }
@@ -250,33 +246,20 @@ fun MoreScreen(
     }
 }
 
-/** The sheet's head: avatar 58 (OK changes it), name 24/800, "All playlists · 3 playlists", and **Switch**. */
+/** Lamassu profile head: logo avatar + name; no switch / multi-profile controls. */
 @Composable
-private fun ProfileRow(name: String, playlistLabel: String, playlists: Int, avatarId: Int, avatarPath: String, onSwitch: () -> Unit, onPickAvatar: () -> Unit) {
+private fun ProfileRow(name: String, avatarId: Int, avatarPath: String) {
     Row(
         Modifier.fillMaxWidth().padding(start = 14.mpx, end = 14.mpx, top = 4.mpx, bottom = 18.mpx),
         horizontalArrangement = Arrangement.spacedBy(16.mpx),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StageSurface(onClick = onPickAvatar, radius = 29.mpx, modifier = Modifier.size(58.mpx), focusStyle = tv.own.owntv.ui.stage.StageFocus.POSTER, contentAlignment = Alignment.Center) {
-            RailAvatar(name.take(1).uppercase(), size = 58, textSize = 24, avatarId = avatarId, imagePath = avatarPath)
-        }
+        RailAvatar(name.take(1).uppercase(), size = 58, textSize = 24, avatarId = avatarId, imagePath = avatarPath)
         Column(Modifier.weight(1f)) {
-            Text(name, style = stageText(24, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name.ifBlank { stringResource(R.string.app_name) }, style = stageText(24, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                playlistLabel + stringResource(R.string.content_epg_bits_separator) + pluralStringResource(R.plurals.more_playlist_count, playlists, playlists),
+                stringResource(R.string.lamassu_profile_line),
                 style = stageText(15.5f, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-        StageSurface(
-            onClick = onSwitch, radius = 15.mpx, modifier = Modifier.height(40.mpx),
-            idle = Modifier.background(StageColors.ControlFill, RoundedCornerShape(15.mpx)),
-            contentAlignment = Alignment.Center,
-        ) { focused ->
-            Text(
-                stringResource(R.string.more_profile_switch), style = stageText(15, 700),
-                color = if (focused) stageAccent.onAccent else StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 16.mpx),
             )
         }
     }

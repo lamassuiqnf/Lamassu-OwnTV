@@ -19,9 +19,11 @@ class LanguageSettingsViewModel(
 
     val currentTag: StateFlow<String> = localeStore.currentTag
 
-    /** Packaged + picker-visible catalogue rows, A–Z by English name. System default is not in this list. */
+    /** Lamassu ships Arabic + English only. System default is not in this list. */
     val pickerRows: List<SupportedLocale> =
-        SupportedLocales.pickerRows.sortedBy { it.englishName.lowercase(Locale.ROOT) }
+        SupportedLocales.pickerRows
+            .filter { it.languageTag == "ar" || it.languageTag.startsWith("en") }
+            .sortedBy { it.englishName.lowercase(Locale.ROOT) }
 
     fun setLocale(tag: String) {
         viewModelScope.launch { localeStore.set(tag) }

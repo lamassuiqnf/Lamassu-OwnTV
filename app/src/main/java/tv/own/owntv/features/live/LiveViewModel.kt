@@ -2158,7 +2158,6 @@ class LiveViewModel(
         const val HISTORY_LIST_LIMIT = 30
         val defaultRail = listOf(
             LiveRailItem(LiveKey.Favorites, icon = OwnTVIcon.FAVORITE),
-            LiveRailItem(LiveKey.History, icon = OwnTVIcon.HISTORY),
             LiveRailItem(LiveKey.All),
         )
 

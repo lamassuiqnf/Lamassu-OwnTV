@@ -394,6 +394,9 @@ fun HomeScreen(
                 contentPadding = PaddingValues(top = if (fullBleed || posterItem != null) 0.dp else NoHeroTop, bottom = 48.mpx),
                 verticalArrangement = Arrangement.spacedBy(RowGap),
             ) {
+                item(key = "lamassu_banners") {
+                    tv.own.owntv.lamassu.LamassuHomeBanners(contentStart = contentStart)
+                }
                 itemsIndexed(renderRows, key = { _, row -> row.name }) { _, row ->
                     val firstItemFocusRequester = rowFocusRequester(row)
                     val rowModifier = if (row == firstRowUnderHero) unfoldOnUp else Modifier

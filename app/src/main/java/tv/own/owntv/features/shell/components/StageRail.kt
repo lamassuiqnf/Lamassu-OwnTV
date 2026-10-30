@@ -91,11 +91,8 @@ enum class RailState {
  */
 data class NowPlayingRail(val logoUrl: String?, val audioMode: Boolean, val playing: Boolean)
 
-/** The rail order: Search first, Sports then the Guide right after Live TV, More last. */
-private val StageRailOrder = listOf(
-    MainSection.SEARCH, MainSection.HOME, MainSection.LIVE_TV, MainSection.SPORTS, MainSection.EPG,
-    MainSection.MOVIES, MainSection.SERIES, MainSection.DOWNLOADS,
-)
+/** Lamassu rail: Home, Live, Movies, Series — Search / Sports / Guide / Downloads removed. */
+private val StageRailOrder = tv.own.owntv.lamassu.LamassuBrand.RailOrder
 
 /** The rail's width with names: Normal 280 · Wide 340 · Extra wide 400; Compact is the 84 capsule. */
 private val NavSize.openWidth get() = when (this) {
@@ -158,10 +155,10 @@ fun StageRail(
     // Search, Settings and More all land on a rail item: Search has its own, Settings lives behind More.
     val focusSection = when {
         selected == MainSection.SETTINGS || selected == MainSection.MORE -> MainSection.MORE
-        selected == MainSection.SEARCH || selected in visibleSections -> selected
+        selected in visibleSections -> selected
         else -> StageRailOrder.firstOrNull { it in visibleSections } ?: MainSection.MORE
     }
-    val items = StageRailOrder.filter { it == MainSection.SEARCH || it in visibleSections } + MainSection.MORE
+    val items = StageRailOrder.filter { it in visibleSections } + MainSection.MORE
 
     // Slide in from the edge (320 ms, or a snap with animations off): the capsule when it leaves
     // HIDDEN, the open rail each time it opens.
@@ -304,12 +301,18 @@ private fun RailEdgeGlow(modifier: Modifier) {
     )
 }
 
-/** The mark (50), with the wordmark beside it when the rail is open (`.brandrow`, 0 10 18 padding). */
+/** Lamassu logo + name in the open rail; logo alone when compact. */
 @Composable
 private fun ColumnScope.RailBrand(open: Boolean) {
-    val icon = rememberAppliedIcon()
     if (!open) {
-        BrandMark(icon, 50.mpx, Modifier.padding(bottom = 12.mpx))
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(tv.own.owntv.R.drawable.lamassu_logo),
+            contentDescription = stringResource(tv.own.owntv.R.string.app_name),
+            modifier = Modifier
+                .padding(bottom = 12.mpx)
+                .size(50.mpx)
+                .clip(RoundedCornerShape(12.mpx)),
+        )
         return
     }
     Row(
@@ -317,9 +320,18 @@ private fun ColumnScope.RailBrand(open: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(14.mpx),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BrandMark(icon, 50.mpx)
-        // The wordmark, 130 wide (`.brandrow`, `wordmarkC()`).
-        Wordmark(130.mpx)
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(tv.own.owntv.R.drawable.lamassu_logo),
+            contentDescription = stringResource(tv.own.owntv.R.string.app_name),
+            modifier = Modifier.size(50.mpx).clip(RoundedCornerShape(12.mpx)),
+        )
+        Text(
+            stringResource(tv.own.owntv.R.string.app_name),
+            style = stageText(24, 800),
+            color = tv.own.owntv.lamassu.LamassuBrand.Orange,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -422,16 +434,16 @@ private fun RailActiveDot(modifier: Modifier) {
  */
 @Composable
 private fun RailProfile(open: Boolean, name: String, line: String?, avatarId: Int, avatarPath: String, onSwitchProfile: () -> Unit, onPickAvatar: () -> Unit) {
+    // Lamassu is single-profile: profile tile is display-only (no switch / add / avatar picker).
     val a = stageAccent
     val initial = name.trim().take(1).uppercase().ifEmpty { "?" }
     StageSurface(
-        onClick = onSwitchProfile,
-        onLongClick = onPickAvatar,
+        onClick = {},
         radius = if (open) 20.mpx else 23.mpx,
         modifier = if (open) Modifier.fillMaxWidth() else Modifier.padding(top = 4.mpx).size(46.mpx),
-        // Alone in the capsule the avatar covers a fill, so it takes the ring instead.
         focusStyle = if (open) StageFocus.FILLED else StageFocus.POSTER,
         contentAlignment = if (open) Alignment.CenterStart else Alignment.Center,
+        enabled = false,
     ) { focused ->
         if (!open) {
             RailAvatar(initial, avatarId = avatarId, imagePath = avatarPath)
@@ -446,7 +458,7 @@ private fun RailProfile(open: Boolean, name: String, line: String?, avatarId: In
             Column {
                 Text(name, style = stageText(19, 700), color = if (focused) a.onAccent else StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (line != null) {
-                    Text("$line ›", style = stageText(15, 400), color = if (focused) a.onAccent else StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(line, style = stageText(15, 400), color = if (focused) a.onAccent else StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

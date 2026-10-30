@@ -146,6 +146,8 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
                 GlobalContext.get().get<tv.own.owntv.core.settings.SettingsRepository>().applyStageDefaults()
             }
         }
+        // Lamassu brand defaults: accent, nav trim, single profile, CPanel banners.
+        runCatching { GlobalContext.get().get<tv.own.owntv.lamassu.LamassuBootstrap>().start() }
         // Sports: core decides from Auto rebuild whether the stored board is due ("on every app start",
         // or older than the chosen hours). It reads one small file and touches no database.
         appScope.launch {
