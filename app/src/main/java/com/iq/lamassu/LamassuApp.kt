@@ -1,4 +1,4 @@
-package tv.own.owntv
+package com.iq.lamassu
 
 import android.app.Application
 import android.content.Context
@@ -21,6 +21,8 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
+import tv.own.owntv.BuildConfig
+import tv.own.owntv.MainActivity
 import tv.own.owntv.core.util.Perf
 import tv.own.owntv.core.di.coreModule
 import tv.own.owntv.core.di.databaseModule
@@ -29,7 +31,7 @@ import tv.own.owntv.di.appModule
 import tv.own.owntv.di.playerModule
 import tv.own.owntv.ui.theme.subtitleFontResource
 
-class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Configuration.Provider {
+class LamassuApp : Application(), SingletonImageLoader.Factory, androidx.work.Configuration.Provider {
 
     companion object {
         /** Upper bound for the image disk cache — the value it was once fixed at. */
@@ -125,7 +127,7 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         tv.own.owntv.core.brand.AppIconSwitcher.mainActivityClass = MainActivity::class.java.name
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.ERROR else Level.NONE)
-            androidContext(this@OwnTVApp)
+            androidContext(this@LamassuApp)
             modules(coreModule, appModule, databaseModule, dataModule, playerModule)
         }
         Perf.stamp("koin-started")

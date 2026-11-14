@@ -41,7 +41,6 @@ import tv.own.owntv.features.shell.components.vodRating
 import tv.own.owntv.features.shell.components.vodSortLabel
 import tv.own.owntv.ui.stage.StageKeyHints
 import tv.own.owntv.ui.stage.StagePoster
-import tv.own.owntv.ui.stage.StageSearchField
 import tv.own.owntv.ui.stage.StageSegmented
 import tv.own.owntv.ui.stage.StageTool
 import tv.own.owntv.ui.theme.mpx
@@ -243,7 +242,8 @@ fun MoviesScreen(
     val cinematicDetailsPct by settingsVm.cinematicDetailsHeight(PanelSection.MOVIES).collectAsStateWithLifecycle()
     // Cinematic is grid-only: the List rows have nowhere to put a full-bleed backdrop. The stored
     // choice is deliberately not rewritten, so switching back to Separate restores the user's List.
-    val viewMode = if (cinematic) SettingsRepository.VodViewMode.GRID else storedViewMode
+    val viewMode = SettingsRepository.VodViewMode.GRID
+    listOf(storedViewMode)
     val chNavEnabled by settingsVm.chNavEnabled.collectAsStateWithLifecycle()
     val chNavUpSkip by settingsVm.chNavUpSkip.collectAsStateWithLifecycle()
     val chNavDownSkip by settingsVm.chNavDownSkip.collectAsStateWithLifecycle()
@@ -272,8 +272,6 @@ fun MoviesScreen(
     // Separate keeps the categories on screen; Cinematic opens them as a sheet (◀, or the Categories tool).
     var categoriesOpen by remember { mutableStateOf(false) }
     var sheetHadFocus by remember { mutableStateOf(false) }
-    var sortOpen by remember { mutableStateOf(false) }
-    val sortFocus = remember { FocusRequester() }
     val categoriesVisible = lockedKey == null && (!cinematic || categoriesOpen)
     val railCounts by (if (categoriesVisible) vm.railCounts else remember { kotlinx.coroutines.flow.MutableStateFlow(emptyMap<LiveKey, Int>()) })
         .collectAsStateWithLifecycle()
@@ -494,7 +492,7 @@ fun MoviesScreen(
             isFocused = { gridPaneFocused },
             // On the "All" list (every movie) a long-press jump to the very last item is
             // pointless and janks, so disable long-press there — short-press skipping stays.
-            longPressEnabled = { selectedKey != LiveKey.All },
+            longPressEnabled = { false },
             lastIndex = { movies.itemCount - 1 },
             currentTargetIndex = {
                 val sel = selectedMovie
@@ -554,6 +552,10 @@ fun MoviesScreen(
     val onEnterPin: () -> Unit = { selectedItem?.let { listPin.askedFromList(); lockVm.open(tv.own.owntv.core.model.MediaType.MOVIE, it.key) } }
     val emptyText = if (sealed) stringResource(R.string.content_category_locked_placeholder) else if (searchQuery.isNotBlank()) stringResource(R.string.content_no_movies_found, searchQuery.trim()) else stringResource(R.string.content_no_movies_here)
 
+    // Browse layout stays LTR so category select matches English (Arabic strings still apply).
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr,
+    ) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -575,19 +577,11 @@ fun MoviesScreen(
                 Column(Modifier.padding(top = toolTop).fillMaxSize().then(paneModifier)) {
                     Row(
                         Modifier.padding(start = fx(68), end = fx(64)).fillMaxWidth()
-                            // ▼ from the toolbar returns to the title the hero shows, not the poster below the tool.
                             .onPreviewKeyEvent { e -> e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown && focusCurrentTitle() }
                             .focusGroup(),
                         horizontalArrangement = Arrangement.spacedBy(10.mpx),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        StageSearchField(
-                            query = searchQuery, onQueryChange = vm::setSearchQuery,
-                            placeholder = stringResource(R.string.content_search_in, headerLabel),
-                            modifier = Modifier.width(440.mpx).focusRequester(listSearchFocus).then(searchLeft),
-                            onEditingChange = { searchEditing = it },
-                        )
-                        VodSortTool(sortMode, Modifier.focusRequester(sortFocus)) { sortOpen = true }
                         StageTool(text = stringResource(R.string.content_category_browser_title), icon = OwnTVIcon.LIST, onClick = { categoriesOpen = true })
                         Spacer(Modifier.weight(1f))
                         StageKeyHints(listOf(playHint, optionsHint, "◀" to stringResource(R.string.content_category_browser_title)))
@@ -623,7 +617,7 @@ fun MoviesScreen(
                                         progress = prog?.takeIf { it.durationMs > 0 }?.let { it.positionMs.toFloat() / it.durationMs },
                                         watched = done,
                                         onClick = { startMovie(movie) },
-                                        onLongClick = { openMenu(movie, index) },
+                                        onLongClick = null,
                                         modifier = Modifier
                                             .gridFocusTarget(
                                                 itemId = movie.id, index = index,
@@ -635,7 +629,7 @@ fun MoviesScreen(
                                             .onPreviewKeyEvent { e ->
                                                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                                 when (e.key) {
-                                                    Key.Menu -> { openMenu(movie, index); true }
+                                                    Key.Menu -> false
                                                     // ◀ from the first column opens the categories.
                                                     Key.DirectionLeft -> index % columns == 0 && run { categoriesOpen = true; true }
                                                     else -> false
@@ -689,25 +683,6 @@ fun MoviesScreen(
                 )
             }
             Column(Modifier.padding(start = listX, top = top).width(listW).fillMaxHeight().then(paneModifier)) {
-                Row(
-                    Modifier.fillMaxWidth().focusGroup(),
-                    horizontalArrangement = Arrangement.spacedBy(10.mpx),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StageSearchField(
-                        query = searchQuery, onQueryChange = vm::setSearchQuery,
-                        placeholder = stringResource(R.string.content_search_in, headerLabel),
-                        modifier = Modifier.weight(1f).focusRequester(listSearchFocus).then(searchLeft),
-                        onEditingChange = { searchEditing = it },
-                    )
-                    StageTool(text = null, icon = OwnTVIcon.SORT, value = vodSortLabel(sortMode), trailingIcon = OwnTVIcon.CHEVRON_DOWN, onClick = { sortOpen = true }, modifier = Modifier.focusRequester(sortFocus))
-                    StageSegmented(
-                        options = listOf(stringResource(R.string.settings_view_grid), stringResource(R.string.settings_view_list)),
-                        selected = if (viewMode == SettingsRepository.VodViewMode.LIST) 1 else 0,
-                        icons = listOf(OwnTVIcon.GRID, OwnTVIcon.LIST),
-                        onSelect = { i -> if ((i == 1) != (viewMode == SettingsRepository.VodViewMode.LIST)) vm.toggleViewMode() },
-                    )
-                }
                 // The lists clip what is drawn outside them, which cut the focused card's glow: they are
                 // laid out [glowRoom] wider at each side and padded back by the same amount.
                 val glowRoom = 24.mpx
@@ -741,7 +716,7 @@ fun MoviesScreen(
                                     progress = if (done || prog == null || prog.durationMs <= 0) null else prog.positionMs.toFloat() / prog.durationMs,
                                     mark = playlistMarks[movie.sourceId],
                                     onClick = { startMovie(movie) },
-                                    onLongClick = { openMenu(movie, index) },
+                                    onLongClick = null,
                                     modifier = Modifier
                                         .gridFocusTarget(
                                             itemId = movie.id, index = index,
@@ -754,7 +729,7 @@ fun MoviesScreen(
                                         .onPreviewKeyEvent { e ->
                                             if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                             when (e.key) {
-                                                Key.Menu -> { openMenu(movie, index); true }
+                                                Key.Menu -> false
                                                 Key.DirectionLeft -> !locked && run { runCatching { railFocus.requestFocus() }; true }
                                                 // Step by row number: a held key outran the paged list and stopped (playbook 2).
                                                 Key.DirectionDown -> (stepper.target ?: index).let { from -> from + 1 < movies.itemCount && run { stepper.stepTo(from + 1); true } }
@@ -793,7 +768,7 @@ fun MoviesScreen(
                                     progress = prog?.takeIf { it.durationMs > 0 }?.let { it.positionMs.toFloat() / it.durationMs },
                                     watched = done,
                                     onClick = { startMovie(movie) },
-                                    onLongClick = { openMenu(movie, index) },
+                                    onLongClick = null,
                                     modifier = Modifier
                                         .gridFocusTarget(
                                             itemId = movie.id, index = index,
@@ -803,7 +778,7 @@ fun MoviesScreen(
                                         )
                                         .onFocusChanged { if (it.isFocused) onMovieFocus(movie) }
                                         .onPreviewKeyEvent { e ->
-                                            if (e.type == KeyEventType.KeyDown && e.key == Key.Menu) { openMenu(movie, index); true } else false
+                                            false
                                         },
                                 ) { VodPosterArt(posterOf(movie), OwnTVIcon.MOVIES) }
                             }
@@ -852,14 +827,8 @@ fun MoviesScreen(
         }
     }
 
-    if (sortOpen) {
-        VodSortMenu(
-            series = false, current = sortMode,
-            x = if (cinematic) 470f else 880f, top = if (cinematic) 250.mpx else 186.mpx,
-            onPick = vm::setSort,
-            onDismiss = { sortOpen = false; runCatching { sortFocus.requestFocus() } },
-        )
     }
+
 
     resumePrompt?.let { (m, pos) ->
         ResumeDialog(

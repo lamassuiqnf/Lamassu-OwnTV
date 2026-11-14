@@ -70,7 +70,7 @@ fun FirstRunLanguageSelector(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun FirstRunLanguagePopup(
+internal fun FirstRunLanguagePopup(
     viewModel: LanguageSettingsViewModel,
     currentTag: String,
     onDismiss: () -> Unit,

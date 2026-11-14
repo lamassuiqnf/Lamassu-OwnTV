@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.own.owntv.R
@@ -261,11 +262,43 @@ fun StageRail(
                     modifier = if (section == focusSection) Modifier.focusRequester(selectedItemFocusRequester) else Modifier,
                 )
             }
-            // Full height: the profile sits at the bottom, after the last separator.
+            // Full height: language + profile sit at the bottom, after the last separator.
             if (full) Spacer(Modifier.weight(1f))
+            RailSeparator(open)
+            RailLanguage(open)
             RailSeparator(open)
             RailProfile(open, profileName, profileLine.takeIf { counts }, avatarId, avatarPath, onSwitchProfile, onPickAvatar)
         }
+    }
+}
+
+/** Language switch in the rail: opens ar/en picker. */
+@Composable
+private fun RailLanguage(open: Boolean) {
+    val viewModel: tv.own.owntv.features.settings.LanguageSettingsViewModel = org.koin.androidx.compose.koinViewModel()
+    val currentTag by viewModel.currentTag.collectAsStateWithLifecycle()
+    val selectedLocale = remember(currentTag, viewModel.pickerRows) {
+        viewModel.pickerRows.firstOrNull { it.languageTag == currentTag }
+    }
+    var showPicker by remember { mutableStateOf(false) }
+    val label = stringResource(R.string.lamassu_language)
+    val chip = selectedLocale?.endonym
+        ?: stringResource(R.string.settings_language_system_default)
+    RailItem(
+        icon = OwnTVIcon.LANGUAGE,
+        label = label,
+        trailing = if (open) chip else null,
+        detail = null,
+        open = open,
+        active = false,
+        onClick = { showPicker = true },
+    )
+    if (showPicker) {
+        tv.own.owntv.features.settings.FirstRunLanguagePopup(
+            viewModel = viewModel,
+            currentTag = currentTag,
+            onDismiss = { showPicker = false },
+        )
     }
 }
 

@@ -70,8 +70,45 @@ val appModule = module {
     singleOf(::ContentOverlayStore)
     singleOf(::EntitlementApiClient)
     single { HomeContentRepository(get()) }
-    single { ManagedSourceProvisioner(androidContext(), get(), get(), get(), get()) }
-    single { EntitlementCoordinator(androidContext(), get(), get(), get(), get(), get(), get()) }
+    single {
+        ManagedSourceProvisioner(
+            context = androidContext(),
+            importer = get(),
+            sourceDao = get(),
+            channelDao = get(),
+            movieDao = get(),
+            seriesDao = get(),
+            settings = get(),
+            catalogSyncScheduler = get(),
+            importFinalizer = get(),
+        )
+    }
+    single {
+        tv.own.owntv.lamassu.LamassuOverlayCatalogSeeder(
+            context = androidContext(),
+            settings = get(),
+            profiles = get(),
+            profileDao = get(),
+            sourceDao = get(),
+            categoryDao = get(),
+            channelDao = get(),
+            movieDao = get(),
+            seriesDao = get(),
+        )
+    }
+    single {
+        tv.own.owntv.lamassu.LamassuCatalogApplicator(
+            settings = get(),
+            customize = get(),
+            sourceDao = get(),
+            categoryDao = get(),
+            channelDao = get(),
+            movieDao = get(),
+            seriesDao = get(),
+            customCategoryDao = get(),
+        )
+    }
+    single { EntitlementCoordinator(androidContext(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single {
         LamassuBootstrap(
             context = androidContext(),
@@ -79,6 +116,7 @@ val appModule = module {
             profileDao = get(),
             profiles = get(),
             homeContent = get(),
+            pictureInPicture = get(),
             scope = get(),
         )
     }

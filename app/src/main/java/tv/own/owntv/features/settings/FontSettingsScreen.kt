@@ -43,21 +43,18 @@ fun FontSettingsScreen(
         onBack = onBack,
         modifier = modifier,
     ) {
-        val families = AppFontFamily.entries.map { it.name to familyLabel(it) }
-        val fontTitle = stringResource(R.string.settings_main_interface_font)
-        val fontValue = SettingValue.Choice(familyLabel(current.mainFamily))
-        StageSettingRow(
-            icon = OwnTVIcon.TEXT_SIZE,
-            title = fontTitle,
-            desc = stringResource(R.string.settings_font_preview),
-            value = fontValue,
-            onClick = { editing = FontEdit.FONT },
-            help = settingHelp(null, fontTitle, stringResource(R.string.settings_choose_font), fontValue, families.map { it.second }, pinnable = false),
-            modifier = Modifier.focusRequester(first),
-        )
+        // Lamassu: font family is fixed to system "normal" sans; only sizing is editable.
         val sizeTitle = stringResource(R.string.settings_font_size)
         val sizeValue = SettingValue.Stepper(percent(current.sizePercent))
-        val stepSize = { d: Int -> onSet(current.copy(sizePercent = UiFontScale.clamp(current.sizePercent + d * UiFontScale.STEP))) }
+        val stepSize = { d: Int ->
+            onSet(
+                current.copy(
+                    sizePercent = UiFontScale.clamp(current.sizePercent + d * UiFontScale.STEP),
+                    mainFamily = AppFontFamily.SYSTEM_SANS,
+                    popupFamily = AppFontFamily.SYSTEM_SANS,
+                ),
+            )
+        }
         StageSettingRow(
             icon = OwnTVIcon.TEXT_SIZE,
             title = sizeTitle,
@@ -66,10 +63,19 @@ fun FontSettingsScreen(
             onClick = { editing = FontEdit.SIZE },
             onStep = stepSize,
             help = settingHelp(null, sizeTitle, stringResource(R.string.settings_font_size_range, UiFontScale.MIN, UiFontScale.MAX), sizeValue, pinnable = false),
+            modifier = Modifier.focusRequester(first),
         )
         val popupTitle = stringResource(R.string.settings_popup_font_size)
         val popupValue = SettingValue.Stepper(percent(current.popupFontSizePercent))
-        val stepPopup = { d: Int -> onSet(current.copy(popupFontSizePercent = PopupFontScale.clamp(current.popupFontSizePercent + d * PopupFontScale.STEP))) }
+        val stepPopup = { d: Int ->
+            onSet(
+                current.copy(
+                    popupFontSizePercent = PopupFontScale.clamp(current.popupFontSizePercent + d * PopupFontScale.STEP),
+                    mainFamily = AppFontFamily.SYSTEM_SANS,
+                    popupFamily = AppFontFamily.SYSTEM_SANS,
+                ),
+            )
+        }
         StageSettingRow(
             icon = OwnTVIcon.TEXT_SIZE,
             title = popupTitle,
@@ -85,27 +91,49 @@ fun FontSettingsScreen(
             title = reset,
             desc = null,
             value = null,
-            // Popup size has its own row in Appearance; Reset leaves it alone.
-            onClick = { onSet(FontCustomization(popupSizePercent = current.popupSizePercent)) },
+            onClick = {
+                onSet(
+                    FontCustomization(
+                        popupSizePercent = current.popupSizePercent,
+                        mainFamily = AppFontFamily.SYSTEM_SANS,
+                        popupFamily = AppFontFamily.SYSTEM_SANS,
+                    ),
+                )
+            },
             help = SettingHelp(reset, stringResource(R.string.settings_font_customization_description), hints = settingHints(null, pinnable = false)),
         )
 
         when (editing) {
-            FontEdit.FONT -> PickerDialog(
-                title = fontTitle,
-                options = families,
-                selected = current.mainFamily.name,
-                // One family for the interface and its popups: popups follow the main font.
-                onSelect = { name -> AppFontFamily.valueOf(name).let { onSet(current.copy(mainFamily = it, popupFamily = it)) }; editing = null },
-                onDismiss = { editing = null },
-            )
             FontEdit.SIZE -> panelEditor({ editing = null }) {
-                PanelStepper(percent(current.sizePercent), onStep = stepSize, onReset = { onSet(current.copy(sizePercent = UiFontScale.DEFAULT)) }, onDone = { editing = null })
+                PanelStepper(
+                    percent(current.sizePercent),
+                    onStep = stepSize,
+                    onReset = {
+                        onSet(
+                            current.copy(
+                                sizePercent = UiFontScale.DEFAULT,
+                                mainFamily = AppFontFamily.SYSTEM_SANS,
+                                popupFamily = AppFontFamily.SYSTEM_SANS,
+                            ),
+                        )
+                    },
+                    onDone = { editing = null },
+                )
             }
             FontEdit.POPUP -> panelEditor({ editing = null }) {
                 PanelStepper(
-                    percent(current.popupFontSizePercent), onStep = stepPopup,
-                    onReset = { onSet(current.copy(popupFontSizePercent = PopupFontScale.DEFAULT)) }, onDone = { editing = null },
+                    percent(current.popupFontSizePercent),
+                    onStep = stepPopup,
+                    onReset = {
+                        onSet(
+                            current.copy(
+                                popupFontSizePercent = PopupFontScale.DEFAULT,
+                                mainFamily = AppFontFamily.SYSTEM_SANS,
+                                popupFamily = AppFontFamily.SYSTEM_SANS,
+                            ),
+                        )
+                    },
+                    onDone = { editing = null },
                     preview = { PopupSizeSample(current.popupSizePercent) },
                 )
             }
@@ -114,4 +142,4 @@ fun FontSettingsScreen(
     }
 }
 
-private enum class FontEdit { FONT, SIZE, POPUP }
+private enum class FontEdit { SIZE, POPUP }

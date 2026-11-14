@@ -44,6 +44,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import tv.own.owntv.core.i18n.horizontalDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -78,7 +79,6 @@ import tv.own.owntv.ui.stage.StageLiveBadge
 import tv.own.owntv.ui.stage.StagePlaylistMark
 import tv.own.owntv.ui.stage.StageProgress
 import tv.own.owntv.ui.stage.StageRow
-import tv.own.owntv.ui.stage.StageSearchField
 import tv.own.owntv.ui.stage.StageSheetItem
 import tv.own.owntv.ui.stage.StageSpecChip
 import tv.own.owntv.ui.stage.StageSurface
@@ -102,27 +102,18 @@ import tv.own.owntv.ui.theme.stageText
 
 private val Tabular = "tnum"
 
-/** "Live TV" 46/800, then the crumb: "‹ **Sky Cinema** · 9 channels" (no ‹ when the column is on screen). */
+/** Section title only — category name stays in the categories rail, not above the channel list. */
 @Composable
 internal fun LiveHeader(category: String, count: Int?, showChevron: Boolean, modifier: Modifier = Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(22.mpx), verticalAlignment = Alignment.Bottom) {
-        Text(stringResource(R.string.common_nav_live_tv), style = stageText(46, 800, (-1).mpxSp), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Row(
-            Modifier.padding(bottom = 3.mpx),
-            horizontalArrangement = Arrangement.spacedBy(12.mpx),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (showChevron) OwnTVIcon(OwnTVIcon.CHEVRON_LEFT, StageColors.Muted, Modifier.size(20.mpx))
-            Text(
-                category, style = stageText(20, 700), color = stageAccent.accent,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-            )
-            if (count != null) Text(
-                "· " + pluralStringResource(R.plurals.content_live_channel_count, count, count),
-                style = stageText(20, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+    if (false) { category.length; count; showChevron } // call-site API kept
+    Text(
+        stringResource(R.string.common_nav_live_tv),
+        style = stageText(46, 800, (-1).mpxSp),
+        color = StageColors.Text,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier,
+    )
 }
 
 /**
@@ -142,7 +133,7 @@ internal fun LiveStageRow(
     mark: PlaylistMark?,
     onFocus: () -> Unit,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -240,13 +231,9 @@ private fun detailsLine(now: XtEpgEntry, details: EpgDetails?): String {
 internal fun LiveStagePane(
     channel: ChannelEntity?,
     channelName: String?,
-    nowNext: EpgNowNext?,
     previewEngine: tv.own.owntv.player.LivePreviewEngine,
     showVideo: Boolean,
     singleSessionBlocked: Boolean,
-    scheduleFocus: FocusRequester,
-    onOpenProgramme: (XtEpgEntry) -> Unit,
-    onBackToList: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val previewState by previewEngine.state.collectAsStateWithLifecycle()
@@ -309,49 +296,7 @@ internal fun LiveStagePane(
                 )
             }
         }
-        val now = nowNext?.now
-        Column(Modifier.fillMaxWidth().padding(start = 4.mpx, end = 4.mpx, top = 34.mpx)) {
-            if (now != null) {
-                Text(now.title, style = stageText(42, 800, (-0.5).mpxSp), color = StageColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    detailsLine(now, nowNext.nowDetails),
-                    style = stageText(19, 400), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 8.mpx, bottom = 16.mpx),
-                )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.mpx)) {
-                    StageProgress(progressOf(now), Modifier.weight(1f))
-                    Text(timeLeftText(minutesLeft(now)), style = stageText(17, 400).copy(fontFeatureSettings = Tabular), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                now.description?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        it, style = stageText(19, 400).copy(lineHeight = (19 * 1.55f).mpxSp), color = stageTone(Color(0xFFCCD6D2), StageColors.Body),
-                        maxLines = 3, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 18.mpx),
-                    )
-                }
-            }
-            val next = nowNext?.next
-            val later = nowNext?.upcoming?.firstOrNull()
-            if (next != null) {
-                Row(
-                    Modifier
-                        .padding(top = 22.mpx)
-                        .offset(x = (-12).mpx)
-                        .focusGroup(),
-                    // 30 between the two, less the 12 + 12 each entry pads itself with for its focus fill.
-                    horizontalArrangement = Arrangement.spacedBy(6.mpx),
-                ) {
-                    // ◀ from next goes back to the channel it belongs to, not to whatever lies to the left.
-                    LiveScheduleItem(
-                        next, accentTime = true, onClick = { onOpenProgramme(next) },
-                        modifier = Modifier.focusRequester(scheduleFocus).onPreviewKeyEvent { e ->
-                            if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionLeft) { onBackToList(); true } else false
-                        },
-                    )
-                    if (later != null) LiveScheduleItem(later, accentTime = false, onClick = { onOpenProgramme(later) })
-                }
-            }
-        }
+        // Lamassu: live is sections + channels only — no EPG/now-next under the preview.
     }
 }
 
@@ -404,6 +349,8 @@ internal data class LiveCategoryEntry(
     val icon: OwnTVIcon?,
     val count: Int?,
     val mark: PlaylistMark?,
+    /** When false, the row is a read-only counter (no D-pad focus / OK). */
+    val interactive: Boolean = true,
 )
 
 /**
@@ -476,51 +423,54 @@ internal fun LiveCategories(
     /** The category search is being typed in (the player's sheet then leaves ◀ to the text cursor). */
     onSearchEditingChange: (Boolean) -> Unit = {},
 ) {
-    var localQuery by remember { mutableStateOf("") }
-    val query = searchQuery ?: localQuery
-    val setQuery: (String) -> Unit = onSearchQueryChange ?: { localQuery = it }
-    val visible = remember(entries, query) {
-        val q = query.trim()
-        if (q.isEmpty()) entries.indices.toList() else entries.indices.filter { entries[it].label.contains(q, ignoreCase = true) }
-    }
+    // Lamassu: categories are a plain list — no search filter.
+    val visible = entries.indices.toList()
     val rowFocusers = remember(visible.size) { List(visible.size) { FocusRequester() } }
-    val searchFocus = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
+    fun focusablePosFor(index: Int): Int {
+        if (index in entries.indices && entries[index].interactive) {
+            val pos = visible.indexOf(index)
+            if (pos >= 0) return pos
+        }
+        return visible.indexOfFirst { entries[it].interactive }.coerceAtLeast(0)
+    }
+    val allIndex = entries.indexOfFirst { it.item.key is tv.own.owntv.core.live.LiveKey.All }
     // CH+/− in the categories changes the selection; the highlight follows it there.
     var hasFocus by remember { mutableStateOf(false) }
     LaunchedEffect(selectedIndex) {
-        val pos = visible.indexOf(selectedIndex)
-        if (!hasFocus || pos < 0) return@LaunchedEffect
-        runCatching { listState.scrollToItem(pos + 1) } // +1: the search field is item 0
+        if (!hasFocus) return@LaunchedEffect
+        if (selectedIndex in entries.indices && !entries[selectedIndex].interactive) return@LaunchedEffect
+        val pos = focusablePosFor(selectedIndex)
+        if (pos !in rowFocusers.indices) return@LaunchedEffect
+        runCatching { listState.scrollToItem(pos) }
         withFrameNanos { }
         runCatching { rowFocusers[pos].requestFocus() }
     }
     LaunchedEffect(focusRowIndex, visible) {
         val target = focusRowIndex ?: return@LaunchedEffect
+        if (target in entries.indices && !entries[target].interactive) {
+            onRowFocused()
+            return@LaunchedEffect
+        }
         visible.indexOf(target).takeIf { it >= 0 }?.let { pos ->
-            // A row further than the screen (a CH± jump) is not composed yet: scroll to it first.
             if (!runCatching { rowFocusers[pos].requestFocus() }.getOrDefault(false)) {
-                runCatching { listState.scrollToItem(pos + 1) } // +1: the search field is item 0
+                runCatching { listState.scrollToItem(pos) }
                 withFrameNanos { }
                 runCatching { rowFocusers[pos].requestFocus() }
             }
         }
         onRowFocused()
     }
-    // The search stays until it is cleared: Back inside the list clears it and returns to the field,
-    // so a long filtered list is one press from the top. With no search, Back does what it always did.
-    androidx.activity.compose.BackHandler(enabled = hasFocus && query.isNotEmpty()) {
-        setQuery("")
-        scope.launch {
-            runCatching { listState.scrollToItem(0) }
-            withFrameNanos { }
-            runCatching { searchFocus.requestFocus() }
-        }
-    }
     // Where the fixed entries end and the provider groups begin (the "GROUPS · DE" heading).
     val firstGroup = entries.indexOfFirst { it.item.key is tv.own.owntv.core.live.LiveKey.Folder || it.item.key is tv.own.owntv.core.live.LiveKey.Custom }
+    // Toward content (▶ in LTR, ◀ in RTL) — absolute Right breaks category select in Arabic RTL.
+    val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
     val rightKey = Modifier.onPreviewKeyEvent { e ->
-        if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { onNavigateRight(); true } else false
+        if (e.type == KeyEventType.KeyDown &&
+            e.key.horizontalDirection(layoutDirection) == tv.own.owntv.core.i18n.HorizontalDirection.END
+        ) {
+            onNavigateRight(); true
+        } else false
     }
     val a = stageAccent
     Column(
@@ -548,11 +498,11 @@ internal fun LiveCategories(
                 .onFocusChanged { hasFocus = it.hasFocus }
                 .focusProperties {
                     onEnter = {
-                        val pos = visible.indexOf(selectedIndex)
-                        val target = if (pos in rowFocusers.indices) rowFocusers[pos] else searchFocus
-                        if (!runCatching { target.requestFocus() }.getOrDefault(false)) {
+                        val pos = focusablePosFor(selectedIndex)
+                        val target = rowFocusers.getOrNull(pos)
+                        if (target != null && !runCatching { target.requestFocus() }.getOrDefault(false)) {
                             scope.launch {
-                                runCatching { listState.scrollToItem(if (pos >= 0) pos + 1 else 0) }
+                                runCatching { listState.scrollToItem(pos) }
                                 withFrameNanos { }
                                 runCatching { target.requestFocus() }
                             }
@@ -564,25 +514,10 @@ internal fun LiveCategories(
             // Room for the 2 px outer focus ring, which the list would otherwise clip.
             contentPadding = PaddingValues(start = 4.mpx, end = 4.mpx, top = 4.mpx, bottom = 8.mpx),
         ) {
-            item(key = "__search__") {
-                StageSearchField(
-                    query = query,
-                    onQueryChange = setQuery,
-                    placeholder = stringResource(R.string.content_search_categories).trimEnd('…'),
-                    onEditingChange = onSearchEditingChange,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = if (sheet) 8.mpx else 0.mpx, end = if (sheet) 8.mpx else 0.mpx, bottom = if (sheet) 14.mpx else 16.mpx)
-                        .focusRequester(searchFocus)
-                        .then(if (query.isEmpty()) rightKey else Modifier),
-                    height = if (sheet) 54.mpx else 48.mpx,
-                    radius = if (sheet) 16.mpx else 15.mpx,
-                    horizontalPadding = if (sheet) 16.mpx else 18.mpx,
-                )
-            }
+            
             visible.forEachIndexed { pos, index ->
                 val entry = entries[index]
-                if (index == firstGroup && query.isBlank()) {
+                if (index == firstGroup) {
                     item(key = "__groups__") {
                         if (sheet) StageGroupLabel(groupsHeading, sheet = true)
                         else Text(
@@ -592,9 +527,25 @@ internal fun LiveCategories(
                     }
                 }
                 item(key = entry.item.key.toString()) {
+                    val selected = index == selectedIndex
+                    if (!entry.interactive) {
+                        // Read-only total counter (All movies / All series) — not a D-pad key.
+                        LiveCategoryCounter(entry, selected = selected)
+                        return@item
+                    }
+                    val firstInteractive = visible.firstOrNull { entries[it].interactive } == index
                     val rowModifier = Modifier.focusRequester(rowFocusers[pos]).then(rightKey)
                         .onFocusChanged { if (it.hasFocus) onRowFocus(index) }
-                    val selected = index == selectedIndex
+                        .then(
+                            if (firstInteractive && allIndex >= 0 && !entries[allIndex].interactive) {
+                                Modifier.onPreviewKeyEvent { e ->
+                                    if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp) {
+                                        onSelect(allIndex)
+                                        true
+                                    } else false
+                                }
+                            } else Modifier,
+                        )
                     if (sheet) {
                         StageSheetItem(
                             text = entry.label,
@@ -607,15 +558,48 @@ internal fun LiveCategories(
                                 entry.name.tags.forEach { StageTag(it, onAccent = if (focused) a.onAccent else null) }
                             },
                             trailing = entry.mark?.let { m -> { _ -> StagePlaylistMark(m) } },
-                            onLongClick = { onLongSelect(index) },
+                            onLongClick = null,
                             modifier = rowModifier,
                         )
                     } else {
-                        LiveColumnItem(entry, selected, onClick = { onSelect(index) }, onLongClick = { onLongSelect(index) }, modifier = rowModifier)
+                        LiveColumnItem(entry, selected, onClick = { onSelect(index) }, onLongClick = null, modifier = rowModifier)
                     }
                 }
             }
         }
+        }
+    }
+}
+
+/** Non-focusable All movies / All series total — label + count only. */
+@Composable
+private fun LiveCategoryCounter(entry: LiveCategoryEntry, selected: Boolean) {
+    val a = stageAccent
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 14.mpx, end = 14.mpx, top = 6.mpx, bottom = 10.mpx)
+            .then(if (selected) Modifier.stageSelectedBar(a.accent, 14.mpx) else Modifier),
+        horizontalArrangement = Arrangement.spacedBy(12.mpx),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        entry.icon?.let { OwnTVIcon(it, if (selected) a.accent else StageColors.Muted, Modifier.size(20.mpx)) }
+        Text(
+            entry.label,
+            style = stageText(18.5f, 600),
+            color = if (selected) a.accent else StageColors.Muted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        entry.count?.let {
+            Text(
+                tv.own.owntv.ui.components.formatCount(it),
+                style = stageText(18, 700),
+                color = if (selected) a.accent else StageColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -630,7 +614,7 @@ private fun LiveColumnItem(
     entry: LiveCategoryEntry,
     selected: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val a = stageAccent

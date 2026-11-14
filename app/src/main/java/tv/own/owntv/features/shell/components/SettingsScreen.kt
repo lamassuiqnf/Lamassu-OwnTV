@@ -393,7 +393,8 @@ fun SettingsScreen(
     // Sub-screens sit below the status cluster (StageContentTop), 6 dp in from the edges.
     val sub = modifier.padding(start = 6.dp, end = 6.dp, bottom = 6.dp, top = StageContentTop)
     // A full page's search hands over to Settings search, keyboard up.
-    val openSearch: () -> Unit = { lastTab = null; searchQuery = ""; searchMode = true; searchFromMore = false; searchAutoEdit = true; tab = SettingsTab.ROOT }
+    // Lamassu: no settings search.
+    val openSearch: (() -> Unit)? = null
     if (tab != SettingsTab.ROOT) {
     CompositionLocalProvider(tv.own.owntv.features.settings.LocalSettingsSearch provides openSearch) {
     when (tab) {
@@ -476,13 +477,7 @@ fun SettingsScreen(
             chipTone = if (autoPlayNext) TileTone.PRIMARY else TileTone.SECONDARY,
             onClick = { settingsVm.setAutoPlayNext(!autoPlayNext) },
         ),
-        RootRow(
-            "quick_check_update", TileTone.SECONDARY, OwnTVIcon.DOWNLOADS,
-            title = stringResource(R.string.settings_quick_check_update),
-            chip = stringResource(if (updateCheckOnStart) R.string.common_on else R.string.common_off),
-            chipTone = if (updateCheckOnStart) TileTone.PRIMARY else TileTone.SECONDARY,
-            onClick = { settingsVm.setUpdateCheckOnStart(!updateCheckOnStart) },
-        ),
+        // Lamassu: check-for-updates removed from Quick.
         RootGroup("group_profile", stringResource(R.string.settings_profile_group), OwnTVIcon.PERSON, stringResource(R.string.settings_group_summary_profile)),
         RootGroup("group_sources", stringResource(R.string.settings_group_sources), OwnTVIcon.PLAYLIST, stringResource(R.string.settings_group_summary_sources)),
         RootRow(
@@ -835,12 +830,21 @@ fun SettingsScreen(
             }
         }
         val byKey = sliced.flatMap { it.second }.associateBy { it.key }
+        val appearanceKeys = tv.own.owntv.lamassu.LamassuSettings.AppearanceRowKeys
         sliced.map { (group, rows) ->
-            if (group.key == "group_quick") {
-                group to quickPinned.mapNotNull { byKey[it] ?: videoDeepRows[it] }
-            } else {
-                group to rows
+            when (group.key) {
+                "group_quick" -> group to quickPinned
+                    .filter { it != "quick_check_update" }
+                    .mapNotNull { byKey[it] ?: videoDeepRows[it] }
+                "group_appearance" -> group to rows.filter { it.key in appearanceKeys }
+                else -> group to rows
             }
+        }
+    }
+    // Lamassu only exposes Quick + Appearance; coerce out of removed groups.
+    LaunchedEffect(selectedGroup) {
+        if (!tv.own.owntv.lamassu.LamassuSettings.isVisibleGroup(selectedGroup)) {
+            selectedGroup = SettingsGroup.QUICK.ordinal
         }
     }
     // A pin that matches no Settings row at all (a row removed in an earlier release) is dropped, so
@@ -1156,15 +1160,16 @@ fun SettingsScreen(
             panel = panel,
             group = if (searching) stringResource(R.string.common_nav_settings) else stringResource(group.titleRes),
             count = pageCount,
-            searchQuery = searchQuery,
-            onSearchQuery = { searchQuery = it },
+            searchQuery = "",
+            onSearchQuery = {},
             scroll = pageScroll,
             crumb = !searching,
             searchFocus = searchFieldFocus,
             rowsFocus = rowsFocus,
             modifier = modifier,
-            searchAutoEdit = searchAutoEdit,
-            panelTop = if (group == SettingsGroup.APPEARANCE && !searching) ({ tv.own.owntv.features.settings.SettingsLivePreview() }) else null,
+            searchAutoEdit = false,
+            panelTop = null,
+            showSearch = false,
         ) {
             when {
                 // A search page with nothing typed yet (or the text cleared) says what to do, not a blank page.
@@ -1183,9 +1188,14 @@ fun SettingsScreen(
                 }
                 group == SettingsGroup.PROFILE -> tv.own.owntv.features.settings.ProfileSettingsRows()
                 // Only Quick can be empty, and only because the user emptied it.
-                selectedRows.isEmpty() -> StageSettingsNote(stringResource(R.string.settings_quick_empty_title), stringResource(R.string.settings_quick_empty_hint))
+                selectedRows.isEmpty() && !inQuick -> StageSettingsNote(stringResource(R.string.settings_quick_empty_title), stringResource(R.string.settings_quick_empty_hint))
                 else -> {
-                    selectedRows.forEachIndexed { i, row ->
+                    if (inQuick) {
+                        tv.own.owntv.lamassu.LamassuSubscriptionSettingsCard()
+                    }
+                    if (selectedRows.isEmpty() && inQuick) {
+                        // Paid-code card may be the only Quick content.
+                    } else selectedRows.forEachIndexed { i, row ->
                         row.heading?.let { heading ->
                             val under = selectedRows.drop(i).let { rest -> 1 + rest.drop(1).takeWhile { it.heading == null }.size }
                             StageSettingsHeading(heading, under, first = i == 0)

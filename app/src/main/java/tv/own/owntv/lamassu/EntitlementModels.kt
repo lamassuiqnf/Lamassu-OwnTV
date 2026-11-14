@@ -117,12 +117,24 @@ sealed class EntitlementGateState {
     data class ConnectionGrace(val snapshot: EntitlementSnapshot) : EntitlementGateState()
 }
 
+/**
+ * Server-driven content access applied on top of the local catalog.
+ * Empty allowlists mean "all items in an allowed section" (AnotherIPTV / StreamVault parity).
+ */
 data class EntitlementAccess(
     val mode: String = "none",
     val allowLive: Boolean = true,
     val allowMovies: Boolean = true,
     val allowSeries: Boolean = true,
+    val liveCategoryAllowlist: Set<String> = emptySet(),
+    val liveStreamAllowlist: Set<String> = emptySet(),
+    val movieCategoryAllowlist: Set<String> = emptySet(),
+    val movieStreamAllowlist: Set<String> = emptySet(),
+    val seriesCategoryAllowlist: Set<String> = emptySet(),
+    val seriesStreamAllowlist: Set<String> = emptySet(),
     val managedOnlyProviders: Boolean = false,
+    /** Home banner auto-advance interval from CPanel (`banner_interval`). */
+    val bannerIntervalSeconds: Int = 5,
 ) {
     companion object {
         fun open() = EntitlementAccess(mode = "subscription")

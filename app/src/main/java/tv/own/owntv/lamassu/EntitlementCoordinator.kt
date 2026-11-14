@@ -1,6 +1,7 @@
 package tv.own.owntv.lamassu
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,6 +20,8 @@ class EntitlementCoordinator(
     private val provisioner: ManagedSourceProvisioner,
     private val accessStore: EntitlementAccessStore,
     private val overlayStore: ContentOverlayStore,
+    private val catalogApplicator: LamassuCatalogApplicator,
+    private val overlaySeeder: LamassuOverlayCatalogSeeder,
 ) {
     private val appContext = context.applicationContext
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -58,18 +61,13 @@ class EntitlementCoordinator(
 
             if (cached != null && cached.mode != "none" && cached.status == "active") {
                 publishAccess(cached)
+                // Apply last-known CPanel catalog immediately so Live is never blank while
+                // revalidate is in flight (and works offline within grace).
+                applyPanelCatalog(cached, label = "cached")
                 _gate.value = EntitlementGateState.Allowed
-                scheduleBackgroundProvision(cached, refreshCredentials = true)
-                val age = if (cached.fetchedAtMs > 0) {
-                    System.currentTimeMillis() - cached.fetchedAtMs
-                } else {
-                    Long.MAX_VALUE
-                }
-                val needsNetwork = forceRefresh || age >= 15 * 60_000L
-                if (needsNetwork) {
-                    bgScope.launch { revalidateInBackground(cached) }
-                } else {
-                    bgScope.launch { refreshConfigQuietly() }
+                bgScope.launch {
+                    refreshConfigQuietly()
+                    revalidateInBackground(cached, forceRefresh = forceRefresh)
                 }
                 return
             }
@@ -95,6 +93,7 @@ class EntitlementCoordinator(
                     cache.set(snap)
                     _snapshot.value = snap
                     publishAccess(snap)
+                    applyPanelCatalog(snap, label = "restore")
                     scheduleBackgroundProvision(snap, refreshCredentials = false)
                     _gate.value = EntitlementGateState.Allowed
                     return
@@ -107,6 +106,7 @@ class EntitlementCoordinator(
             val cached = runCatching { cache.get() }.getOrNull()
             if (cached != null && cached.status == "active") {
                 publishAccess(cached)
+                applyPanelCatalog(cached, label = "grace")
                 _gate.value = EntitlementGateState.ConnectionGrace(cached)
             } else {
                 _gate.value = EntitlementGateState.NeedsActivation
@@ -166,24 +166,36 @@ class EntitlementCoordinator(
                     _snapshot.value = snap
                     publishAccess(snap)
                     _statusAr.value = str(R.string.lamassu_status_import)
-                    _importProgressPercent.value = 12
-                    val provision = withTimeoutOrNull(180_000L) {
-                        provisioner.ensureProvisioned(provider) { percent, message ->
-                            _importProgressPercent.value = percent.coerceIn(0, 100)
-                            if (message.isNotBlank()) _statusAr.value = message
-                        }
+                    _importProgressPercent.value = 35
+                    // Seed Room from CPanel overlays first — do not wait on Xtream.
+                    // Stream URLs are already in the entitlement payload.
+                    val seeded = applyPanelCatalog(snap, label = "activate")
+                    _importProgressPercent.value = 70
+                    val hasExportStreams = snap.overlays.any {
+                        val t = it.contentType.trim().lowercase()
+                        t == "live" || t == "movie" || t == "series"
                     }
-                    if (provision == null || provision.isFailure || !provisioner.hasBrowsableCatalog()) {
+                    if (seeded <= 0 && !hasExportStreams) {
+                        // No CPanel export streams — legacy fallback: one Xtream pull, then gate.
+                        withTimeoutOrNull(45_000L) {
+                            provisioner.ensureProvisioned(
+                                provider,
+                                allowFullCatalogSync = true,
+                            ) { percent, message ->
+                                _importProgressPercent.value = (70 + percent / 4).coerceIn(70, 99)
+                                if (message.isNotBlank()) _statusAr.value = message
+                            }
+                        }
+                        applyPanelCatalog(snap, label = "activate-after-xtream")
+                    } else {
+                        // Overlay seed = AnotherIPTV OverlayCatalogMerge path (proven when Xtream
+                        // is blocked). Series episodes resolve lazily on open via credentials.
                         scheduleBackgroundProvision(snap, refreshCredentials = false)
                     }
-                    if (provision?.isSuccess == true && provisioner.hasBrowsableCatalog()) {
-                        val stripped = snap.copy(provider = provider.copy(password = ""))
-                        _snapshot.value = stripped
-                        cache.set(stripped)
-                        _importProgressPercent.value = 100
-                    } else {
-                        cache.set(snap)
-                    }
+                    val stripped = snap.copy(provider = provider.copy(password = ""))
+                    _snapshot.value = stripped
+                    cache.set(stripped)
+                    _importProgressPercent.value = 100
                     _gate.value = EntitlementGateState.Allowed
                 }
                 is ApiResult.Error -> {
@@ -207,7 +219,10 @@ class EntitlementCoordinator(
         }
     }
 
-    private suspend fun revalidateInBackground(cached: EntitlementSnapshot) {
+    private suspend fun revalidateInBackground(
+        cached: EntitlementSnapshot,
+        forceRefresh: Boolean = false,
+    ) {
         refreshConfigQuietly()
         if (_remoteConfig.value.maintenanceMode) {
             _gate.value = EntitlementGateState.Maintenance(
@@ -221,17 +236,18 @@ class EntitlementCoordinator(
                 val snap = validated.data
                 _snapshot.value = snap
                 publishAccess(snap)
-                val provisioned = runCatching {
-                    provisioner.ensureProvisioned(snap.provider)
-                }.getOrNull()
-                if (provisioned?.isSuccess == true && provisioner.hasBrowsableCatalog()) {
-                    val stripped = snap.copy(provider = snap.provider?.copy(password = ""))
-                    _snapshot.value = stripped
-                    cache.set(stripped)
-                } else {
-                    cache.set(snap)
-                    scheduleBackgroundProvision(snap, refreshCredentials = false)
+                val mergedProvider = snap.provider?.let { fresh ->
+                    if (fresh.password.isNotBlank()) fresh
+                    else fresh.copy(password = cached.provider?.password.orEmpty())
                 }
+                val merged = snap.copy(provider = mergedProvider)
+                // Panel catalog first — Xtream is optional enrichment.
+                applyPanelCatalog(merged, label = if (forceRefresh) "force-refresh" else "revalidate")
+                scheduleBackgroundProvision(merged, refreshCredentials = false, forceSync = forceRefresh)
+                publishAccess(merged)
+                val stripped = merged.copy(provider = merged.provider?.copy(password = ""))
+                _snapshot.value = stripped
+                cache.set(stripped)
                 if (_gate.value !is EntitlementGateState.Maintenance) {
                     _gate.value = EntitlementGateState.Allowed
                 }
@@ -266,35 +282,79 @@ class EntitlementCoordinator(
         }
     }
 
+    /**
+     * Writes CPanel overlays into Room and projects allowlists/custom folders.
+     * @return number of stream rows upserted by the seeder
+     */
+    private suspend fun applyPanelCatalog(snap: EntitlementSnapshot, label: String): Int {
+        val seeded = runCatching { overlaySeeder.seed(snap) }
+            .onFailure { Log.e(TAG, "overlay seed failed ($label)", it) }
+            .getOrDefault(0)
+        // Always project allowlists after seed — even when seeded==0 (cached Room already filled).
+        runCatching { catalogApplicator.apply(snap) }
+            .onFailure { Log.e(TAG, "catalog apply failed ($label)", it) }
+        val liveOverlays = snap.overlays.count {
+            it.contentType.equals("live", ignoreCase = true)
+        }
+        Log.i(
+            TAG,
+            "panel catalog ($label): seeded=$seeded liveOverlays=$liveOverlays " +
+                "overlays=${snap.overlays.size} provider=${snap.provider?.host.orEmpty()}",
+        )
+        return seeded
+    }
+
     private fun scheduleBackgroundProvision(
         snap: EntitlementSnapshot,
         refreshCredentials: Boolean = true,
+        forceSync: Boolean = false,
     ) {
         val seed = snap.provider ?: return
         bgScope.launch {
             var provider = seed
-            if (refreshCredentials || provider.password.isBlank()) {
+            var gotFreshCredentials = false
+            if (refreshCredentials || provider.password.isBlank() || forceSync) {
                 val installId = runCatching { installIdStore.getOrCreate() }.getOrNull()
                 if (installId != null) {
-                    val live = withTimeoutOrNull(28_000L) { api.validate(installId, snap) }
-                    if (live is ApiResult.Success) {
-                        val fresh = live.data
-                        _snapshot.value = fresh
-                        publishAccess(fresh)
-                        provider = fresh.provider ?: provider
-                        cache.set(fresh)
+                    when (val live = withTimeoutOrNull(28_000L) { api.validate(installId, snap) }) {
+                        is ApiResult.Success -> {
+                            val fresh = live.data
+                            _snapshot.value = fresh
+                            publishAccess(fresh)
+                            provider = fresh.provider ?: provider
+                            gotFreshCredentials = provider.password.isNotBlank()
+                            cache.set(fresh)
+                            applyPanelCatalog(fresh.copy(provider = provider), label = "bg-validate")
+                        }
+                        is ApiResult.Error -> {
+                            Log.w(
+                                TAG,
+                                "validate on open failed: ${CustomerFacingText.sanitize(live.message)}",
+                            )
+                        }
+                        null -> Unit
                     }
                 }
             }
-            val result = runCatching { provisioner.ensureProvisioned(provider) }.getOrNull()
-            if (
-                result?.isSuccess == true &&
-                provider.password.isNotBlank() &&
-                provisioner.hasBrowsableCatalog()
-            ) {
-                val stripped = (_snapshot.value ?: snap).copy(
-                    provider = provider.copy(password = ""),
+            runCatching {
+                provisioner.ensureProvisioned(
+                    provider,
+                    forceSync = forceSync && (gotFreshCredentials || provider.password.isNotBlank()),
+                    // Full Xtream only when CPanel sent no export overlays (legacy). Otherwise
+                    // overlay seed+prune is the catalog — same net result as AnotherIPTV's
+                    // overlay merge when the Xtream line is unavailable.
+                    allowFullCatalogSync = snap.overlays.none {
+                        val t = it.contentType.trim().lowercase()
+                        t == "live" || t == "movie" || t == "series" || t == "category"
+                    },
                 )
+            }.onFailure { Log.w(TAG, "background Xtream provision failed", it) }
+            val live = _snapshot.value ?: snap
+            val withProvider = live.copy(provider = provider)
+            // Re-seed after Xtream so any newly imported VOD episodes merge; prune keeps CPanel set.
+            applyPanelCatalog(withProvider, label = "bg-after-xtream")
+            if (provider.password.isNotBlank()) {
+                val stripped = live.copy(provider = provider.copy(password = ""))
                 _snapshot.value = stripped
                 cache.set(stripped)
             }
@@ -303,14 +363,28 @@ class EntitlementCoordinator(
 
     private fun publishAccess(snap: EntitlementSnapshot) {
         overlayStore.replaceAll(snap.overlays, snap.mode)
+        // Gate allow_* from resolved export (overlay + server). Allowlists follow AnotherIPTV:
+        // prefer server publish lists, fall back to overlay-derived when server omitted them.
+        val gate = LamassuExportPermissions.resolve(snap)
         accessStore.update(
             EntitlementAccess(
                 mode = snap.mode,
-                allowLive = snap.permissions.allowLive,
-                allowMovies = snap.permissions.allowMovies,
-                allowSeries = snap.permissions.allowSeries,
+                allowLive = gate.allowLive,
+                allowMovies = gate.allowMovies,
+                allowSeries = gate.allowSeries,
+                liveCategoryAllowlist = gate.liveCategoryAllowlist.toSet(),
+                liveStreamAllowlist = gate.liveStreamAllowlist.toSet(),
+                movieCategoryAllowlist = gate.movieCategoryAllowlist.toSet(),
+                movieStreamAllowlist = gate.movieStreamAllowlist.toSet(),
+                seriesCategoryAllowlist = gate.seriesCategoryAllowlist.toSet(),
+                seriesStreamAllowlist = gate.seriesStreamAllowlist.toSet(),
                 managedOnlyProviders = snap.settings.managedOnlyProviders,
+                bannerIntervalSeconds = snap.settings.bannerInterval.coerceIn(1, 60),
             ),
         )
+    }
+
+    companion object {
+        private const val TAG = "LamassuEntitlement"
     }
 }

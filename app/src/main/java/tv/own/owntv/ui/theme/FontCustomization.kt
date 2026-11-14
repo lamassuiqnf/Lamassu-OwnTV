@@ -59,19 +59,28 @@ private val PoppinsFamily = FontFamily(
     Font(R.font.poppins_bold, FontWeight.Bold),
 )
 
+/** Lamassu default UI typeface (bein Normal). */
+private val BeinNormalFamily = FontFamily(
+    Font(R.font.bein_normal, FontWeight.Normal),
+    Font(R.font.bein_normal, FontWeight.Medium),
+    Font(R.font.bein_normal, FontWeight.SemiBold),
+    Font(R.font.bein_normal, FontWeight.Bold),
+    Font(R.font.bein_normal, FontWeight.ExtraBold),
+)
+
 fun AppFontFamily.asComposeFamily(): FontFamily = when (this) {
     AppFontFamily.LORA -> LoraFamily
-    AppFontFamily.SYSTEM_SANS -> FontFamily.SansSerif
+    // Lamassu: SYSTEM_SANS is forced as the product default and maps to bein.
+    AppFontFamily.SYSTEM_SANS -> BeinNormalFamily
     AppFontFamily.MONOSPACE -> FontFamily.Monospace
     AppFontFamily.PLAYFAIR_DISPLAY -> PlayfairDisplayFamily
     AppFontFamily.DANCING_SCRIPT -> DancingScriptFamily
     AppFontFamily.POPPINS -> PoppinsFamily
-    AppFontFamily.PLUS_JAKARTA_SANS -> PlusJakartaSansFamily
+    AppFontFamily.PLUS_JAKARTA_SANS -> BeinNormalFamily
 }
 
 /** Android/mpv equivalents used by subtitle renderers outside Compose typography. */
 fun AppFontFamily.asAndroidTypeface(context: android.content.Context): android.graphics.Typeface = when (this) {
-    AppFontFamily.SYSTEM_SANS -> android.graphics.Typeface.SANS_SERIF
     AppFontFamily.MONOSPACE -> android.graphics.Typeface.MONOSPACE
     else -> androidx.core.content.res.ResourcesCompat.getFont(context, subtitleFontResource)
         ?: android.graphics.Typeface.SANS_SERIF
@@ -83,14 +92,14 @@ val AppFontFamily.subtitleFontResource: Int
         AppFontFamily.PLAYFAIR_DISPLAY -> R.font.playfair_display_variable
         AppFontFamily.DANCING_SCRIPT -> R.font.dancing_script_variable
         AppFontFamily.POPPINS -> R.font.poppins_regular
-        AppFontFamily.PLUS_JAKARTA_SANS -> R.font.plus_jakarta_sans_variable
+        AppFontFamily.PLUS_JAKARTA_SANS,
         AppFontFamily.SYSTEM_SANS,
-        AppFontFamily.MONOSPACE,
-        -> 0
+        -> R.font.bein_normal
+        AppFontFamily.MONOSPACE -> 0
     }
 
-val LocalMainFontFamily = staticCompositionLocalOf<FontFamily> { PlusJakartaSansFamily }
-val LocalPopupFontFamily = staticCompositionLocalOf<FontFamily> { PlusJakartaSansFamily }
+val LocalMainFontFamily = staticCompositionLocalOf<FontFamily> { BeinNormalFamily }
+val LocalPopupFontFamily = staticCompositionLocalOf<FontFamily> { BeinNormalFamily }
 val LocalUiFontScaleFactor = staticCompositionLocalOf { 1f }
 val LocalPopupFontScaleFactor = staticCompositionLocalOf { 1f }
 val LocalPopupSizeScaleFactor = staticCompositionLocalOf { 1f }

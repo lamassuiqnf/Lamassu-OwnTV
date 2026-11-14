@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Launch-window background. Matches DarkBackground (#040E0B) so cold start is seamless. -->
+    <!-- Launch-window background. Lamassu navy. -->
     <color name="owntv_window_bg">#19192A</color>
     <!-- Adaptive launcher icon background. -->
-    <color name="owntv_icon_bg">#050914</color>
+    <color name="owntv_icon_bg">#19192A</color>
+    <color name="lamassu_icon_bg">#19192A</color>
 </resources>

@@ -6,7 +6,7 @@ GPLv3 fork of [OwnTV](https://github.com/ahXN00/OwnTV) wired to the Lamassu CPan
 ## What changed
 
 - `applicationId`: `com.iq.lamassu.owntv` (namespace stays `tv.own.owntv`)
-- App display name: **Lamassu** / **لماسو**
+- App display name: **Lamassu** / **لاماسو**
 - Launch gate: activate free / subscription code before OwnTV shell
 - Managed Xtream provision via OwnTV `SourceImporter` after CPanel activate/validate
 - BuildConfig: `LAMASSU_API_BASE_URL`

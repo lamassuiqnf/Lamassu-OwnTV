@@ -151,24 +151,18 @@ fun cinematicQualityBadges(qualityRank: Int, advertisedCapabilities: String?): L
     advertisedCapabilities?.split("•")?.forEach { it.trim().takeIf(String::isNotEmpty)?.let(::add) }
 }
 
-/** "Movies" 46/800, then the crumb "‹ **Disney+ Kids Movies** · 136 titles" (no ‹ when the column is on screen). */
+/** Section title only — category name stays in the categories rail, not above the titles grid/list. */
 @Composable
 internal fun VodHeader(section: String, category: String, count: String?, showChevron: Boolean, modifier: Modifier = Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(22.mpx), verticalAlignment = Alignment.Bottom) {
-        Text(section, style = stageText(46, 800, (-1).mpxSp), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Row(
-            Modifier.padding(bottom = 3.mpx),
-            horizontalArrangement = Arrangement.spacedBy(12.mpx),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (showChevron) OwnTVIcon(OwnTVIcon.CHEVRON_LEFT, StageColors.Muted, Modifier.size(20.mpx))
-            Text(
-                category, style = stageText(20, 700), color = stageAccent.accent,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-            )
-            if (count != null) Text("· $count", style = stageText(20, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
+    if (false) { category.length; count; showChevron } // call-site API kept
+    Text(
+        section,
+        style = stageText(46, 800, (-1).mpxSp),
+        color = StageColors.Text,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier,
+    )
 }
 
 /** "136 titles" / "32 series" for the crumb. */
@@ -342,54 +336,83 @@ internal fun VodCast(cast: List<CastMember>, count: Int, modifier: Modifier = Mo
 }
 
 /**
- * The Separate layout's details card (the "Poster panel"): glass, radius 30, padding 20 — the
- * art 290 high with the title art or name over a bottom shade, the title 32/800, the short meta line,
- * the genres in accent, a five-line synopsis, five cast photos at 92%, and the key hints at the bottom.
+ * The Separate layout's details card: full-height portrait poster cover on the preview side,
+ * with title/meta over a bottom shade and key hints.
  */
 @Composable
-internal fun VodDetailsCard(info: VodTitleInfo?, hints: List<Pair<String, String>>, series: Boolean, modifier: Modifier = Modifier) {
-    Box(modifier.stageGlass(30.mpx).padding(20.mpx)) {
+internal fun VodDetailsCard(
+    info: VodTitleInfo?,
+    hints: List<Pair<String, String>>,
+    series: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.stageGlass(30.mpx).padding(16.mpx)) {
         if (info != null) {
-            Column(Modifier.fillMaxSize().clipToBounds()) {
-                Box(Modifier.fillMaxWidth().height(290.mpx).clip(RoundedCornerShape(20.mpx)).background(Color.Black.copy(alpha = 0.3f))) {
-                    val art = info.backdropUrl ?: info.posterUrl
-                    if (!art.isNullOrBlank()) {
-                        AsyncImage(
-                            model = art, contentDescription = null, contentScale = ContentScale.Crop,
-                            alignment = BiasAlignment(if (series) 1f else -0.4f, -0.2f), modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                    Box(Modifier.fillMaxSize().gradientWash(true, 0f to Color.Transparent, 0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.7f)))
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(20.mpx))
+                    .background(Color.Black.copy(alpha = 0.3f)),
+            ) {
+                // Prefer portrait poster so the preview side reads as a cover, not a landscape strip.
+                val art = info.posterUrl ?: info.backdropUrl
+                if (!art.isNullOrBlank()) {
+                    AsyncImage(
+                        model = art,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .gradientWash(true, 0f to Color.Transparent, 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.82f)),
+                )
+                Column(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(start = 18.mpx, end = 18.mpx, bottom = 52.mpx),
+                ) {
                     var logoFailed by remember(info.logoUrl) { mutableStateOf(false) }
                     if (!info.logoUrl.isNullOrBlank() && !logoFailed) {
                         AsyncImage(
-                            model = info.logoUrl, contentDescription = null, contentScale = ContentScale.Fit, alignment = Alignment.BottomStart,
+                            model = info.logoUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            alignment = Alignment.BottomStart,
                             onState = { if (it is AsyncImagePainter.State.Error) logoFailed = true },
-                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 18.mpx, bottom = 14.mpx, end = 18.mpx).height(96.mpx).fillMaxWidth(),
+                            modifier = Modifier
+                                .padding(bottom = 12.mpx)
+                                .height(72.mpx)
+                                .fillMaxWidth(0.85f),
                         )
                     }
-                    // No name over the art without title art: the line under it already says it (#7.3).
-                }
-                Column(Modifier.padding(horizontal = 4.mpx)) {
                     Text(
-                        HeadlineTitle.of(info.title), style = stageText(24, 800), color = StageColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 18.mpx, bottom = 8.mpx),
+                        HeadlineTitle.of(info.title),
+                        style = stageText(26, 800),
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    VodMeta(listOfNotNull(info.year?.toString(), info.runtimeSecs?.let { vodRuntime(it) }), info.rating, info.tags, 17)
+                    Spacer(Modifier.height(8.mpx))
+                    VodMeta(
+                        listOfNotNull(info.year?.toString(), info.runtimeSecs?.let { vodRuntime(it) }),
+                        info.rating,
+                        info.tags,
+                        16,
+                    )
                     if (info.genres.isNotEmpty()) {
                         Text(
-                            info.genres.joinToString(" · "), style = stageText(16, 700), color = stageAccent.accent,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.mpx),
+                            info.genres.joinToString(" · "),
+                            style = stageText(15, 700),
+                            color = stageAccent.accent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 6.mpx),
                         )
-                    }
-                    info.plot?.takeIf { it.isNotBlank() }?.let {
-                        Text(
-                            it, style = stageText(17, 400).copy(lineHeight = (17 * 1.55f).mpxSp), color = StageColors.Body,
-                            maxLines = 5, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.mpx, bottom = 18.mpx),
-                        )
-                    }
-                    if (info.cast.isNotEmpty()) {
-                        VodCast(info.cast, 5, Modifier.graphicsLayer { scaleX = 0.92f; scaleY = 0.92f; transformOrigin = TransformOrigin(0f, 0f) })
                     }
                 }
             }
@@ -424,7 +447,7 @@ internal fun VodListRow(
     progress: Float?,
     mark: PlaylistMark?,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     StageRow(onClick = onClick, onLongClick = onLongClick, height = 118.mpx, horizontalPadding = 16.mpx, gap = 20.mpx, modifier = modifier.fillMaxWidth()) { focused ->
@@ -594,6 +617,8 @@ internal fun vodCategoryEntries(
             },
             count = if (item.sealed) null else counts[item.key],
             mark = item.sourceId?.let(marks::get),
+            // Lamassu: All movies / All series is a total counter only — not a pressable category.
+            interactive = item.key != LiveKey.All,
         )
     }
     return entries to stringResource(R.string.content_vod_providers).uppercase(androidx.compose.ui.text.intl.Locale.current.platformLocale)

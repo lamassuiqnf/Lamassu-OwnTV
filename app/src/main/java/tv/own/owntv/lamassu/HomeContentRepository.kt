@@ -109,6 +109,7 @@ class HomeContentRepository(
             val normalized = mode.lowercase()
             return sections.filter { section ->
                 when (section.audience.lowercase()) {
+                    // AnotherIPTV parity: free-audience cards stay visible for paid users too.
                     "free" -> normalized == "free" || normalized == "subscription"
                     "subscription" -> normalized == "subscription"
                     else -> true

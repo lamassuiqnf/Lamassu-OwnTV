@@ -447,15 +447,10 @@ fun SearchScreen(
                 activeCh != null -> LiveStagePane(
                     channel = activeCh,
                     channelName = ProviderTags.parse(activeCh.name).name,
-                    nowNext = nowNext,
                     previewEngine = liveVm.previewEngine,
                     showVideo = previewOn,
                     singleSessionBlocked = singleSessionBlocked,
-                    scheduleFocus = scheduleFocus,
-                    // Search only shows: a programme picked here goes to the channel, where its menu lives.
-                    onOpenProgramme = { goTo(active) },
-                    onBackToList = { runCatching { requesterFor(active.key).requestFocus() } },
-                    modifier = panelModifier.onFocusChanged { scheduleHasFocus = it.hasFocus },
+                    modifier = panelModifier,
                 )
                 active is Entry.Movie -> PosterPanel(
                     movieTitleInfo(active.movie, focusedMeta?.takeIf { it.first == active.key }?.second, metadataMode.tmdbWins),

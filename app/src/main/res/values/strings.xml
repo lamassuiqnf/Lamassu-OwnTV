@@ -10,7 +10,8 @@
     <string name="more_group_your_things">Library</string>
     <string name="more_group_keep_safe">Account</string>
     <string name="settings_app_group">Help</string>
-    <string name="lamassu_entitlement_welcome">Activate free access or enter your subscription code</string>
+    <string name="lamassu_entitlement_welcome">Because your family deserves absolute security, choose Lamassu … your official partner</string>
+    <string name="lamassu_by_alnafawa">BY ALNAFAWA</string>
     <string name="lamassu_entitlement_expired">Your subscription has ended</string>
     <string name="lamassu_checking">Checking subscription…</string>
     <string name="lamassu_free_mode">Start free</string>
@@ -38,6 +39,14 @@
     <string name="lamassu_error_expired">Your subscription has ended</string>
     <string name="lamassu_error_server">Could not reach the server</string>
     <string name="lamassu_error_sync_timeout">Content sync timed out</string>
+    <string name="lamassu_sync_failed_clean">Could not refresh content. Try again later.</string>
+    <string name="sync_error_auth">Could not refresh content. Try again later.</string>
+    <string name="sync_error_unreachable">Could not reach the server. Check your connection and try again.</string>
+    <string name="sync_error_connection">Could not connect to the server. Try again later.</string>
+    <string name="sync_error_not_found">Could not refresh content. Try again later.</string>
+    <string name="sync_error_portal">Could not refresh content. Try again later.</string>
+    <string name="sync_error_mac">Could not refresh content. Try again later.</string>
+    <string name="sync_status_failed">Could not refresh content. Try again later.</string>
     <string name="lamassu_maintenance_default">The app is currently under maintenance</string>
     <string name="more_about_description">Lamassu brings you live TV, movies and series. Content is managed for you after you activate free access or a subscription code.</string>
     <string name="more_about_license">Customer app · managed catalog</string>
@@ -56,6 +65,7 @@
     <string name="lamassu_sub_devices">Devices: %1$d of %2$s</string>
     <string name="lamassu_sub_devices_unlimited">unlimited</string>
     <string name="lamassu_sub_code">Code: %1$s</string>
+    <string name="lamassu_code_activated">Code activated</string>
     <string name="lamassu_sub_refresh">Refresh access</string>
     <string name="lamassu_sub_refreshing">Refreshing…</string>
     <string name="lamassu_sub_hint">Buy or renew a plan on Telegram, then enter your code here if asked.</string>

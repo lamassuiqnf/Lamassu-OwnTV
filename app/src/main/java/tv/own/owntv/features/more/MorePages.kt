@@ -220,32 +220,25 @@ private var lastOpenedCard: Int? = null
 @Composable
 internal fun SettingsPage(entry: FocusRequester, pinned: Int, onOpenGroup: (Int) -> Unit, onSearch: () -> Unit) {
     val back = lastOpenedCard
-    val profiles = tv.own.owntv.features.settings.profileCount()
+    // Lamassu: only Quick + Appearance; card index stays SettingsGroup.ordinal.
+    val visible = SettingsCards.mapIndexedNotNull { index, card ->
+        if (tv.own.owntv.lamassu.LamassuSettings.isVisibleGroup(index)) index to card else null
+    }
     Column(Modifier.fillMaxSize().focusGroup()) {
         PageHead(stringResource(R.string.common_nav_settings)) {
             Spacer(Modifier.weight(1f))
             Text(stringResource(R.string.more_settings_pin_hint), style = stageText(17, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        StageSurface(
-            onClick = { lastOpenedCard = null; onSearch() }, radius = 18.mpx,
-            modifier = Modifier.padding(top = 26.mpx).fillMaxWidth().height(60.mpx).then(if (back == null) Modifier.focusRequester(entry) else Modifier),
-            focusStyle = StageFocus.FX,
-            idle = Modifier.background(StageColors.ControlFill, RoundedCornerShape(18.mpx)),
-        ) { focused ->
-            Row(Modifier.padding(horizontal = 20.mpx), horizontalArrangement = Arrangement.spacedBy(14.mpx), verticalAlignment = Alignment.CenterVertically) {
-                OwnTVIcon(OwnTVIcon.SEARCH, if (focused) StageColors.Text else StageColors.Dim, Modifier.size(19.mpx))
-                Text(stringResource(R.string.more_settings_search), style = stageText(19, 500), color = if (focused) StageColors.Text else StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
         Column(Modifier.padding(top = 22.mpx), verticalArrangement = Arrangement.spacedBy(20.mpx)) {
-            SettingsCards.chunked(3).forEach { row ->
-                // 150 at the default font; a larger app font grows the row rather than cutting the
-                // summary, and the row's cards keep one height.
+            visible.chunked(3).forEach { row ->
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.mpx)) {
-                    row.forEach { card ->
-                        val index = SettingsCards.indexOf(card)
+                    row.forEach { (index, card) ->
                         StageTile(
-                            modifier = Modifier.weight(1f).heightIn(min = 150.mpx).fillMaxHeight().then(if (index == back) Modifier.focusRequester(entry) else Modifier),
+                            modifier = Modifier.weight(1f).heightIn(min = 150.mpx).fillMaxHeight().then(
+                                if (back == null && index == visible.first().first) Modifier.focusRequester(entry)
+                                else if (index == back) Modifier.focusRequester(entry)
+                                else Modifier
+                            ),
                             onClick = { lastOpenedCard = index; onOpenGroup(index) },
                             padding = 0.mpx,
                         ) { focused ->
@@ -253,13 +246,15 @@ internal fun SettingsPage(entry: FocusRequester, pinned: Int, onOpenGroup: (Int)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     OwnTVIcon(card.icon, if (focused) StageColors.Text else StageColors.Muted, Modifier.size(28.mpx))
                                     Spacer(Modifier.weight(1f))
-                                    Text((if (index == 1) profiles else card.count ?: pinned).toString(), style = stageText(17, 700), color = StageColors.Dim)
+                                    Text((card.count ?: pinned).toString(), style = stageText(17, 700), color = StageColors.Dim)
                                 }
                                 Text(stringResource(card.nameRes), style = stageText(24, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.mpx))
                                 Text(stringResource(card.summaryRes), style = stageText(16, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.mpx))
                             }
                         }
                     }
+                    // Keep row width even when fewer than 3 cards.
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -724,9 +719,10 @@ internal fun SupportPage(entry: FocusRequester, onOpenLanguage: () -> Unit) {
 }
 
 @Composable
-internal fun AboutPage(vm: MoreCountsViewModel, entry: FocusRequester, onOpenLanguage: () -> Unit) {
+internal fun AboutPage(vm: MoreCountsViewModel, entry: FocusRequester, onOpenLanguage: () -> Unit = {}) {
     val accent = stageAccent.accent
-    Column(Modifier.fillMaxSize().focusGroup()) {
+    listOf(vm, onOpenLanguage)
+    Column(Modifier.fillMaxSize().focusGroup().focusRequester(entry)) {
         Row(horizontalArrangement = Arrangement.spacedBy(40.mpx), verticalAlignment = Alignment.CenterVertically) {
             Image(
                 painter = painterResource(R.drawable.lamassu_logo),
@@ -778,15 +774,6 @@ internal fun AboutPage(vm: MoreCountsViewModel, entry: FocusRequester, onOpenLan
                     Text(stringResource(R.string.more_about_scan), style = stageText(15.5f, 500), color = StageColors.Muted, modifier = Modifier.padding(top = 8.mpx))
                 }
             }
-        }
-        Row(Modifier.padding(top = 22.mpx), horizontalArrangement = Arrangement.spacedBy(10.mpx)) {
-            StageTool(
-                stringResource(R.string.lamassu_language),
-                onClick = onOpenLanguage,
-                icon = OwnTVIcon.LIST,
-                boxed = true,
-                modifier = Modifier.focusRequester(entry),
-            )
         }
     }
 }

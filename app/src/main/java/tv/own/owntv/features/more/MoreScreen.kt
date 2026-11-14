@@ -179,17 +179,6 @@ fun MoreScreen(
                 )
             }
             item(MoreItem.SETTINGS, OwnTVIcon.SETTINGS, stringResource(R.string.common_nav_settings), null, false)
-            GroupLabel(stringResource(R.string.more_group_your_things))
-            item(MoreItem.FAVORITES, OwnTVIcon.FAVORITE, stringResource(R.string.content_category_favorites), favorites.total.toString(), false)
-            GroupLabel(stringResource(R.string.more_group_keep_safe))
-            item(MoreItem.SUBSCRIPTION, OwnTVIcon.PERSON, stringResource(R.string.lamassu_more_subscription), null, false)
-            item(MoreItem.SUPPORT, OwnTVIcon.NETWORK, stringResource(R.string.lamassu_more_support), stringResource(R.string.lamassu_support_handle), false)
-            item(
-                MoreItem.BACKUP, OwnTVIcon.DOWNLOADS, stringResource(R.string.settings_backup_restore),
-                lastBackup?.let { relativeShort(it.at) } ?: stringResource(R.string.common_never), lastBackup == null,
-            )
-            GroupLabel(stringResource(R.string.settings_app_group))
-            item(MoreItem.ERROR_LOG, OwnTVIcon.WARNING, stringResource(R.string.settings_playback_error_log), logCount.toString(), false)
             item(MoreItem.ABOUT, OwnTVIcon.INFO, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, false)
             if (BuildConfig.DEV_TOOLS) item(MoreItem.DEVELOPER, OwnTVIcon.GEAR, "Developer", "DEV", false)
             Spacer(Modifier.weight(1f))
@@ -218,16 +207,9 @@ fun MoreScreen(
                     onOpenGroup = { onOpenSettings(it, false) },
                     onSearch = { onOpenSettings(null, true) },
                 )
-                MoreItem.FAVORITES -> FavouritesPage(
-                    vm = vm, setEntry = setEntry,
-                    onPlayChannel = onPlayChannel, onPlayMovie = { onPlayMovie(it, 0L) }, onOpenSeries = onOpenSeries,
-                )
-                MoreItem.SUBSCRIPTION -> SubscriptionPage(entry = pageTarget)
-                MoreItem.SUPPORT -> SupportPage(entry = pageTarget, onOpenLanguage = { onOpenSettings(8, false) })
-                MoreItem.BACKUP -> BackupScreen(entry = pageTarget, modifier = Modifier.fillMaxSize())
-                MoreItem.ERROR_LOG -> ErrorLogPage(setEntry = setEntry, onCountChanged = { logVersion++ })
-                MoreItem.ABOUT -> AboutPage(vm = vm, entry = pageTarget, onOpenLanguage = { onOpenSettings(8, false) })
-                MoreItem.HISTORY, MoreItem.LOCAL_SYNC -> {
+                MoreItem.ABOUT -> AboutPage(vm = vm, entry = pageTarget, onOpenLanguage = { onOpenSettings(3, false) })
+                MoreItem.FAVORITES, MoreItem.SUBSCRIPTION, MoreItem.SUPPORT, MoreItem.BACKUP,
+                MoreItem.ERROR_LOG, MoreItem.HISTORY, MoreItem.LOCAL_SYNC -> {
                     // Hidden in Lamassu; if restored from an old selection, fall back to Settings.
                     LaunchedEffect(Unit) { chosen = MoreItem.SETTINGS }
                 }

@@ -243,8 +243,8 @@ fun StageSettingsPage(
     list: (@Composable (Modifier) -> Unit)? = null,
     /** Off: the path starts at [parents] ("Add a source › Type it here"), not at Settings. */
     settingsRoot: Boolean = true,
-    /** Off where there is no Settings to search (the setup wizard reuses the Add a source pages). */
-    showSearch: Boolean = true,
+    /** Lamassu: search is off everywhere. */
+    showSearch: Boolean = false,
     rows: @Composable ColumnScope.() -> Unit = {},
 ) {
     val searching = searchQuery.isNotBlank()
@@ -884,8 +884,8 @@ fun StageFullPage(
         toolbar = toolbar,
         list = list,
         settingsRoot = settingsRoot,
-        // A full page outside Settings (the setup wizard) has nowhere to hand its search to.
-        showSearch = search != null,
+        // Lamassu: no settings search field.
+        showSearch = false,
         rows = rows,
     )
 }

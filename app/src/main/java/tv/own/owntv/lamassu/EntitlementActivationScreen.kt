@@ -2,6 +2,7 @@ package tv.own.owntv.lamassu
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -28,16 +30,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
+import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
+import tv.own.owntv.features.settings.FirstRunLanguagePopup
+import tv.own.owntv.features.settings.LanguageSettingsViewModel
+import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.components.OwnTVSpinner
 import tv.own.owntv.ui.stage.StageButton
 import tv.own.owntv.ui.stage.StageProgress
 import tv.own.owntv.ui.stage.StageSearchField
+import tv.own.owntv.ui.stage.StageTool
 import tv.own.owntv.ui.theme.StageColors
 import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.ui.theme.stageText
@@ -69,6 +79,12 @@ fun EntitlementActivationScreen(
 ) {
     var showCode by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf("") }
+    var showLanguage by remember { mutableStateOf(false) }
+    val languageVm: LanguageSettingsViewModel = koinViewModel()
+    val currentTag by languageVm.currentTag.collectAsStateWithLifecycle()
+    val selectedLocale = remember(currentTag, languageVm.pickerRows) {
+        languageVm.pickerRows.firstOrNull { it.languageTag == currentTag }
+    }
     val context = LocalContext.current
     val expired = gate is EntitlementGateState.Expired
     val maintenance = gate is EntitlementGateState.Maintenance
@@ -84,6 +100,16 @@ fun EntitlementActivationScreen(
         val dense = maxHeight < 480.dp
         val pad = if (dense) 12.dp else 24.dp
         val gap = if (dense) 8.dp else 12.dp
+
+        StageTool(
+            text = selectedLocale?.endonym ?: stringResource(R.string.lamassu_language),
+            onClick = { showLanguage = true },
+            icon = OwnTVIcon.LANGUAGE,
+            boxed = true,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(if (dense) 12.dp else 24.dp),
+        )
 
         Column(
             modifier = Modifier
@@ -101,6 +127,13 @@ fun EntitlementActivationScreen(
             verticalArrangement = Arrangement.spacedBy(gap),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Image(
+                painter = painterResource(R.drawable.lamassu_logo),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier
+                    .size(if (dense) 64.dp else 88.dp)
+                    .clip(RoundedCornerShape(16.dp)),
+            )
             Text(
                 text = stringResource(R.string.app_name),
                 style = stageText(if (dense) 26 else 34, 700),
@@ -119,7 +152,7 @@ fun EntitlementActivationScreen(
                 style = stageText(if (dense) 14 else 16, 400),
                 color = StageColors.Text,
                 textAlign = TextAlign.Center,
-                maxLines = 2,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -269,18 +302,52 @@ fun EntitlementActivationScreen(
                 }
             }
         }
+        ByAlnafawaMark(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (dense) 14.dp else 22.dp),
+        )
+
+        if (showLanguage) {
+            FirstRunLanguagePopup(
+                viewModel = languageVm,
+                currentTag = currentTag,
+                onDismiss = { showLanguage = false },
+            )
+        }
     }
 }
 
 @Composable
 fun EntitlementCheckingScreen() {
+    var showLanguage by remember { mutableStateOf(false) }
+    val languageVm: LanguageSettingsViewModel = koinViewModel()
+    val currentTag by languageVm.currentTag.collectAsStateWithLifecycle()
+    val selectedLocale = remember(currentTag, languageVm.pickerRows) {
+        languageVm.pickerRows.firstOrNull { it.languageTag == currentTag }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(ScreenTop),
         contentAlignment = Alignment.Center,
     ) {
+        StageTool(
+            text = selectedLocale?.endonym ?: stringResource(R.string.lamassu_language),
+            onClick = { showLanguage = true },
+            icon = OwnTVIcon.LANGUAGE,
+            boxed = true,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(24.dp),
+        )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(R.drawable.lamassu_logo),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier.size(96.dp).clip(RoundedCornerShape(20.dp)),
+            )
+            Spacer(Modifier.height(20.dp))
             OwnTVSpinner()
             Spacer(Modifier.height(16.dp))
             Text(
@@ -289,6 +356,45 @@ fun EntitlementCheckingScreen() {
                 color = StageColors.Text,
             )
         }
+        ByAlnafawaMark(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 22.dp),
+        )
+        if (showLanguage) {
+            FirstRunLanguagePopup(
+                viewModel = languageVm,
+                currentTag = currentTag,
+                onDismiss = { showLanguage = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ByAlnafawaMark(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 132.dp, height = 1.dp)
+                .background(BrandAmber.copy(alpha = 0.55f)),
+        )
+        Text(
+            text = stringResource(R.string.lamassu_by_alnafawa),
+            style = stageText(12, 500).copy(letterSpacing = 3.2.sp),
+            color = BrandAmber.copy(alpha = 0.92f),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+        Box(
+            modifier = Modifier
+                .size(width = 132.dp, height = 1.dp)
+                .background(BrandAmber.copy(alpha = 0.28f)),
+        )
     }
 }
 

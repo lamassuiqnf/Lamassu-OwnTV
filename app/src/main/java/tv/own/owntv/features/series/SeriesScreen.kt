@@ -56,7 +56,6 @@ import tv.own.owntv.ui.theme.dissolveEdges
 import tv.own.owntv.ui.theme.gradientWash
 import tv.own.owntv.ui.theme.mpxSp
 import androidx.compose.foundation.layout.aspectRatio
-import tv.own.owntv.ui.stage.StageSearchField
 import tv.own.owntv.ui.stage.StageSegmented
 import tv.own.owntv.ui.stage.StageTool
 import tv.own.owntv.ui.theme.StageColors
@@ -300,7 +299,8 @@ private fun SeriesGrid(
     val cinematicDetailsPct by settingsVm.cinematicDetailsHeight(PanelSection.SERIES).collectAsStateWithLifecycle()
     // Cinematic is grid-only. The stored choice is deliberately not rewritten, so switching back to
     // Separate restores the user's List.
-    val viewMode = if (cinematic) SettingsRepository.VodViewMode.GRID else storedViewMode
+    val viewMode = SettingsRepository.VodViewMode.GRID
+    listOf(storedViewMode)
     val chNavEnabled by settingsVm.chNavEnabled.collectAsStateWithLifecycle()
     val chNavUpSkip by settingsVm.chNavUpSkip.collectAsStateWithLifecycle()
     val chNavDownSkip by settingsVm.chNavDownSkip.collectAsStateWithLifecycle()
@@ -329,8 +329,6 @@ private fun SeriesGrid(
     // Separate keeps the categories on screen; Cinematic opens them as a sheet (◀, or the Categories tool).
     var categoriesOpen by remember { mutableStateOf(false) }
     var sheetHadFocus by remember { mutableStateOf(false) }
-    var sortOpen by remember { mutableStateOf(false) }
-    val sortFocus = remember { FocusRequester() }
     val categoriesVisible = lockedKey == null && (!cinematic || categoriesOpen)
     val railCounts by (if (categoriesVisible) vm.railCounts else remember { kotlinx.coroutines.flow.MutableStateFlow(emptyMap<LiveKey, Int>()) })
         .collectAsStateWithLifecycle()
@@ -557,7 +555,7 @@ private fun SeriesGrid(
             isFocused = { gridPaneFocused },
             // On the "All" list (every series) a long-press jump to the very last item is
             // pointless and janks, so disable long-press there — short-press skipping stays.
-            longPressEnabled = { selectedKey != LiveKey.All },
+            longPressEnabled = { false },
             lastIndex = { series.itemCount - 1 },
             currentTargetIndex = {
                 val sel = selectedSeries
@@ -617,6 +615,9 @@ private fun SeriesGrid(
     val onEnterPin: () -> Unit = { selectedItem?.let { listPin.askedFromList(); lockVm.open(tv.own.owntv.core.model.MediaType.SERIES, it.key) } }
     val emptyText = if (sealed) stringResource(R.string.content_category_locked_placeholder) else if (searchQuery.isNotBlank()) stringResource(R.string.content_no_series_found, searchQuery.trim()) else stringResource(R.string.content_no_series_here)
 
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr,
+    ) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -638,19 +639,11 @@ private fun SeriesGrid(
                 Column(Modifier.padding(top = toolTop).fillMaxSize().then(paneModifier)) {
                     Row(
                         Modifier.padding(start = fx(68), end = fx(64)).fillMaxWidth()
-                            // ▼ from the toolbar returns to the title the hero shows, not the poster below the tool.
                             .onPreviewKeyEvent { e -> e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown && focusCurrentTitle() }
                             .focusGroup(),
                         horizontalArrangement = Arrangement.spacedBy(10.mpx),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        StageSearchField(
-                            query = searchQuery, onQueryChange = vm::setSearchQuery,
-                            placeholder = stringResource(R.string.content_search_in, headerLabel),
-                            modifier = Modifier.width(440.mpx).focusRequester(listSearchFocus).then(searchLeft),
-                            onEditingChange = { searchEditing = it },
-                        )
-                        VodSortTool(sortMode, Modifier.focusRequester(sortFocus)) { sortOpen = true }
                         StageTool(text = stringResource(R.string.content_category_browser_title), icon = OwnTVIcon.LIST, onClick = { categoriesOpen = true })
                         Spacer(Modifier.weight(1f))
                         StageKeyHints(listOf(playHint, optionsHint, "◀" to stringResource(R.string.content_category_browser_title)))
@@ -683,7 +676,7 @@ private fun SeriesGrid(
                                         width = 196.mpx, height = 294.mpx,
                                         progress = seriesProgress[show.id],
                                         onClick = { onOpenAt(index); vm.openSeries(show) },
-                                        onLongClick = { openMenu(show, index) },
+                                        onLongClick = null,
                                         modifier = Modifier
                                             .gridFocusTarget(
                                                 itemId = show.id, index = index,
@@ -695,7 +688,7 @@ private fun SeriesGrid(
                                             .onPreviewKeyEvent { e ->
                                                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                                 when (e.key) {
-                                                    Key.Menu -> { openMenu(show, index); true }
+                                                    Key.Menu -> false
                                                     // ◀ from the first column opens the categories.
                                                     Key.DirectionLeft -> index % columns == 0 && run { categoriesOpen = true; true }
                                                     else -> false
@@ -749,25 +742,6 @@ private fun SeriesGrid(
                 )
             }
             Column(Modifier.padding(start = listX, top = top).width(listW).fillMaxHeight().then(paneModifier)) {
-                Row(
-                    Modifier.fillMaxWidth().focusGroup(),
-                    horizontalArrangement = Arrangement.spacedBy(10.mpx),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StageSearchField(
-                        query = searchQuery, onQueryChange = vm::setSearchQuery,
-                        placeholder = stringResource(R.string.content_search_in, headerLabel),
-                        modifier = Modifier.weight(1f).focusRequester(listSearchFocus).then(searchLeft),
-                        onEditingChange = { searchEditing = it },
-                    )
-                    StageTool(text = null, icon = OwnTVIcon.SORT, value = vodSortLabel(sortMode), trailingIcon = OwnTVIcon.CHEVRON_DOWN, onClick = { sortOpen = true }, modifier = Modifier.focusRequester(sortFocus))
-                    StageSegmented(
-                        options = listOf(stringResource(R.string.settings_view_grid), stringResource(R.string.settings_view_list)),
-                        selected = if (viewMode == SettingsRepository.VodViewMode.LIST) 1 else 0,
-                        icons = listOf(OwnTVIcon.GRID, OwnTVIcon.LIST),
-                        onSelect = { i -> if ((i == 1) != (viewMode == SettingsRepository.VodViewMode.LIST)) vm.toggleViewMode() },
-                    )
-                }
                 // The lists clip what is drawn outside them, which cut the focused card's glow: they are
                 // laid out [glowRoom] wider at each side and padded back by the same amount.
                 val glowRoom = 24.mpx
@@ -799,7 +773,7 @@ private fun SeriesGrid(
                                     progress = seriesProgress[show.id],
                                     mark = playlistMarks[show.sourceId],
                                     onClick = { onOpenAt(index); vm.openSeries(show) },
-                                    onLongClick = { openMenu(show, index) },
+                                    onLongClick = null,
                                     modifier = Modifier
                                         .gridFocusTarget(
                                             itemId = show.id, index = index,
@@ -812,7 +786,7 @@ private fun SeriesGrid(
                                         .onPreviewKeyEvent { e ->
                                             if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                             when (e.key) {
-                                                Key.Menu -> { openMenu(show, index); true }
+                                                Key.Menu -> false
                                                 Key.DirectionLeft -> !locked && run { runCatching { railFocus.requestFocus() }; true }
                                                 // Step by row number: a held key outran the paged list and stopped (playbook 2).
                                                 Key.DirectionDown -> (stepper.target ?: index).let { from -> from + 1 < series.itemCount && run { stepper.stepTo(from + 1); true } }
@@ -848,7 +822,7 @@ private fun SeriesGrid(
                                     compact = true,
                                     progress = seriesProgress[show.id],
                                     onClick = { onOpenAt(index); vm.openSeries(show) },
-                                    onLongClick = { openMenu(show, index) },
+                                    onLongClick = null,
                                     modifier = Modifier
                                         .gridFocusTarget(
                                             itemId = show.id, index = index,
@@ -858,7 +832,7 @@ private fun SeriesGrid(
                                         )
                                         .onFocusChanged { if (it.isFocused) onShowFocus(show) }
                                         .onPreviewKeyEvent { e ->
-                                            if (e.type == KeyEventType.KeyDown && e.key == Key.Menu) { openMenu(show, index); true } else false
+                                            false
                                         },
                                 ) { VodPosterArt(posterOf(show), OwnTVIcon.SERIES) }
                             }
@@ -907,14 +881,8 @@ private fun SeriesGrid(
         }
     }
 
-    if (sortOpen) {
-        VodSortMenu(
-            series = true, current = sortMode,
-            x = if (cinematic) 470f else 880f, top = if (cinematic) 250.mpx else 186.mpx,
-            onPick = vm::setSort,
-            onDismiss = { sortOpen = false; runCatching { sortFocus.requestFocus() } },
-        )
     }
+
 
     // Long-press (or the remote's Menu key) on a series → ☰ Title options.
     contextSeries?.let { s ->
@@ -1597,7 +1565,7 @@ private fun EpisodeView(
                                 watched = completed,
                                 progress = prog?.takeIf { it.durationMs > 0 }?.let { (it.positionMs.toFloat() / it.durationMs).coerceIn(0f, 1f) },
                                 onClick = { startEpisode(ep) },
-                                onLongClick = { openMenu(ep) },
+                                onLongClick = null,
                                 width = tileW, height = tileW * (189f / 336f),
                                 modifier = epModifierFor(index, ep),
                             ) { filter -> EpisodeStill(episodeStillUrl(meta, series, "w780"), filter) }
@@ -1622,7 +1590,7 @@ private fun EpisodeView(
                             val plot = if (metadataMode.tmdbWins) meta?.overview ?: ep.plot else ep.plot?.takeIf { it.isNotBlank() } ?: meta?.overview
                             StageRow(
                                 onClick = { startEpisode(ep) },
-                                onLongClick = { openMenu(ep) },
+                                onLongClick = null,
                                 height = 138.mpx, horizontalPadding = 22.mpx, gap = 24.mpx, radius = 24.mpx,
                                 modifier = epModifierFor(index, ep).fillMaxWidth(),
                             ) { focused ->

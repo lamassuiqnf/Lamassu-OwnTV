@@ -25,6 +25,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -504,8 +505,9 @@ fun OwnTVShell(
             // Open straight to Live TV on the Favorites folder, with focus landing inside the channel list
             // (restoreFocus drives LiveScreen to focus the first/last channel, not the nav panel).
             tv.own.owntv.core.settings.StartupMode.FAVORITES -> {
+                // Lamassu has no Favorites category — open Live on All instead.
                 onSelectSection(MainSection.LIVE_TV)
-                liveVm.select(tv.own.owntv.core.live.LiveKey.Favorites)
+                liveVm.select(tv.own.owntv.core.live.LiveKey.All)
                 restoreFocus = true
             }
             tv.own.owntv.core.settings.StartupMode.SPECIFIC_CHANNEL -> {
@@ -743,11 +745,9 @@ fun OwnTVShell(
     }
     // The playlist chip reflects the active filter: "All playlists" when none is chosen (id <= 0), the
     // chosen playlist's name otherwise. With a single playlist there's nothing to switch, so just its name.
-    val playlistLabel = when {
-        playlists.size <= 1 -> sourceSummary ?: noSourceLabel
-        activePlaylistId <= 0L -> stringResource(R.string.content_all_playlists)
-        else -> playlists.firstOrNull { it.id == activePlaylistId }?.name ?: (sourceSummary ?: noSourceLabel)
-    }
+    // Lamassu: never show CPanel/provider playlist names in chrome.
+    val playlistLabel = stringResource(R.string.app_name)
+    listOf(playlists, sourceSummary, noSourceLabel, activePlaylistId)
     // OK on the rail item moves focus INTO the window (it is not a section and navigates nowhere).
     val enterNowPlaying = {
         when (playerMode) {
@@ -801,8 +801,8 @@ fun OwnTVShell(
             RemoteShortcutAction.OPEN_MOVIES -> openShortcutSection(MainSection.MOVIES)
             RemoteShortcutAction.OPEN_SERIES -> openShortcutSection(MainSection.SERIES)
             RemoteShortcutAction.OPEN_DOWNLOADS -> openShortcutSection(MainSection.DOWNLOADS)
-            RemoteShortcutAction.OPEN_GUIDE -> openShortcutSection(MainSection.EPG)
-            RemoteShortcutAction.OPEN_SEARCH -> openShortcutSection(MainSection.SEARCH)
+            RemoteShortcutAction.OPEN_GUIDE -> Unit
+            RemoteShortcutAction.OPEN_SEARCH -> Unit
             RemoteShortcutAction.OPEN_SETTINGS -> openShortcutSection(MainSection.SETTINGS)
             RemoteShortcutAction.OPEN_PROFILE_SWITCHER -> {
                 if (playerMode == PlayerMode.FULLSCREEN) dockPlayer()
@@ -1254,12 +1254,7 @@ fun OwnTVShell(
                                 restoreFocus = true
                                 onSelectSection(MainSection.SERIES)
                             },
-                            onOpenTrendingSearch = { query ->
-                                searchVm.setQuery(query)
-                                trendingSearchActive = true
-                                restoreTrendingSearchFocus = false
-                                onSelectSection(MainSection.SEARCH)
-                            },
+                            onOpenTrendingSearch = { _ -> },
                             onChildFocused = { focusedLayer = ShellLayer.CONTENT },
                             restoreFocus = restoreFocus,
                             restoreTrendingSearchFocus = restoreTrendingSearchFocus,
@@ -1279,63 +1274,14 @@ fun OwnTVShell(
                             modifier = Modifier.fillMaxSize(),
                         )
 
-                        selectedSection == MainSection.SEARCH -> SearchScreen(
-                            vm = searchVm,
-                            liveVm = liveVm,
-                            previewEnabled = playerMode == PlayerMode.NONE,
-                            // OK on a result goes to it and Back comes back here once
-                            // (searchReturn). The series page is the same SeriesViewModel the Series
-                            // section shows; a channel or movie is revealed in its own category.
-                            onOpenSeries = { series ->
-                                seriesVm.openSeries(series)
-                                searchReturn = MainSection.SERIES
-                                onSelectSection(MainSection.SERIES)
-                            },
-                            onGoToChannel = { ch ->
-                                restoreFocus = false
-                                if (liveView == tv.own.owntv.core.settings.SettingsRepository.LiveView.GUIDE) {
-                                    liveVm.setLiveView(tv.own.owntv.core.settings.SettingsRepository.LiveView.LIST)
-                                }
-                                liveVm.revealChannel(ch)
-                                searchReturn = MainSection.LIVE_TV
-                                onSelectSection(MainSection.LIVE_TV)
-                            },
-                            onGoToMovie = { movie ->
-                                restoreFocus = false
-                                movieVm.revealMovie(movie)
-                                searchReturn = MainSection.MOVIES
-                                onSelectSection(MainSection.MOVIES)
-                            },
-                            onChildFocused = { focusedLayer = ShellLayer.CONTENT },
-                            returnToHomeOnBack = trendingSearchActive,
-                            onReturnToHome = {
-                                trendingSearchActive = false
-                                restoreTrendingSearchFocus = true
-                                restoreFocus = false
-                                onSelectSection(MainSection.HOME)
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-
-                        selectedSection == MainSection.LIVE_TV && liveView == tv.own.owntv.core.settings.SettingsRepository.LiveView.GUIDE -> EpgScreen(
-                            onPlayChannel = guidePlayChannel,
-                            onPlayCatchup = guidePlayCatchup,
-                            onAddEpg = { openEpgAdd = true; onSelectSection(MainSection.SETTINGS) },
-                            previewEnabled = playerMode == PlayerMode.NONE,
-                            liveMode = true,
-                            onEntryHook = { guideEntry = it },
-                            onListView = { liveVm.setLiveView(tv.own.owntv.core.settings.SettingsRepository.LiveView.LIST) },
-                            restoreFocus = restoreFocus,
-                            onRestored = { restoreFocus = false },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT }
-                                .focusGroup(),
-                        )
+                        selectedSection == MainSection.SEARCH -> {
+                            // Lamassu: no global search — bounce to Home.
+                            androidx.compose.runtime.LaunchedEffect(Unit) { onSelectSection(MainSection.HOME) }
+                        }
 
                         selectedSection == MainSection.LIVE_TV -> LiveScreen(
                             onFullscreen = { openFullscreen() },
-                            onOpenGuide = { liveVm.setLiveView(tv.own.owntv.core.settings.SettingsRepository.LiveView.GUIDE) },
+                            onOpenGuide = {},
                             onChildFocused = { focusedLayer = ShellLayer.CONTENT },
                             previewEnabled = playerMode == PlayerMode.NONE,
                             restoreFocus = restoreFocus,
@@ -1382,55 +1328,36 @@ fun OwnTVShell(
                             modifier = Modifier.fillMaxSize(),
                         )
 
-                        selectedSection == MainSection.EPG -> EpgScreen(
-                            onFullscreen = { openFullscreen() },
-                            onPlayChannel = guidePlayChannel,
-                            onPlayCatchup = guidePlayCatchup,
-                            previewEnabled = playerMode == PlayerMode.NONE,
-                            onEntryHook = { guideEntry = it },
-                            onAddEpg = { openEpgAdd = true; onSelectSection(MainSection.SETTINGS) },
-                            restoreFocus = restoreFocus,
-                            onRestored = { restoreFocus = false },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT }
-                                .focusGroup(),
-                        )
+                        selectedSection == MainSection.EPG -> {
+                            // Lamassu: no TV Guide — bounce to Live TV.
+                            androidx.compose.runtime.LaunchedEffect(Unit) { onSelectSection(MainSection.LIVE_TV) }
+                        }
 
                     }
                 }
             }
           }
+            // Clock only on Home + Live. Live pins it under the preview (physical right) so Arabic
+            // matches English; Home keeps layout-direction End.
+            val showStatusClock = selectedSection == MainSection.HOME || selectedSection == MainSection.LIVE_TV
+            val statusAlign = when (selectedSection) {
+                MainSection.LIVE_TV -> AbsoluteAlignment.BottomRight
+                else -> Alignment.BottomEnd
+            }
             tv.own.owntv.features.shell.components.StageStatusCluster(
-                continuePill = continueTarget?.let { target ->
-                    val live = target.kind == tv.own.owntv.features.home.ContinueKind.LIVE
-                    tv.own.owntv.features.shell.components.ContinuePill(
-                        icon = if (live) OwnTVIcon.LIVE_TV else OwnTVIcon.PLAY,
-                        iconFilled = !live,
-                        action = stringResource(
-                            when (target.action) {
-                                tv.own.owntv.features.home.ContinueAction.RESUME -> R.string.content_action_resume
-                                tv.own.owntv.features.home.ContinueAction.PLAY -> R.string.content_action_play
-                                tv.own.owntv.features.home.ContinueAction.NEXT_UP -> R.string.content_action_next_episode
-                                tv.own.owntv.features.home.ContinueAction.LAST_CHANNEL -> R.string.content_action_last_channel
-                            },
-                        ),
-                        title = target.name,
-                        onClick = continueLastWatched,
-                    )
-                },
+                continuePill = null,
                 audioBar = audioBarContent,
                 playlistLabel = playlistLabel,
-                playlistInteractive = playlists.size > 1,
-                onPlaylistClick = { showPlaylistPicker = true },
-                // Out of reach from deep in a list: from the rail or on Home only.
+                playlistInteractive = false,
+                onPlaylistClick = {},
                 pillsFocusable = focusedLayer == ShellLayer.SIDEBAR || clusterFocused || selectedSection == MainSection.HOME,
                 weatherInfo = weatherInfo,
                 weatherFahrenheit = weatherFahrenheit,
                 clockColors = clockColors,
-                playlistDownFocusRequester = homeFirstRowFocus.takeIf { selectedSection == MainSection.HOME },
+                playlistDownFocusRequester = null,
                 onPlaylistPillBounds = { playlistPillBounds = it },
-                modifier = Modifier.align(Alignment.TopEnd).onFocusChanged { clusterFocused = it.hasFocus }.focusGroup(),
+                showClock = showStatusClock,
+                modifier = Modifier.align(statusAlign).onFocusChanged { clusterFocused = it.hasFocus }.focusGroup(),
             )
             tv.own.owntv.features.shell.components.StageRail(
                 state = railState,
@@ -1442,7 +1369,7 @@ fun OwnTVShell(
                 count = { section -> railCounts[section]?.takeIf { it > 0 } },
                 detail = { section -> railDetail(section, railDetails) },
                 profileName = profileName.ifBlank { stringResource(R.string.common_own_tv_user) },
-                profileLine = stringResource(R.string.shell_rail_profile_line, playlistLabel),
+                profileLine = stringResource(R.string.lamassu_profile_line),
                 onSwitchProfile = onSwitchProfile,
                 onPickAvatar = { showAvatarPicker = true },
                 avatarId = avatarId,

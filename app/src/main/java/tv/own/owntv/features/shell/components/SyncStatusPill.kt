@@ -34,7 +34,6 @@ import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.core.network.ConnectivityObserver
 import tv.own.owntv.core.sync.SyncProgressCounts
 import tv.own.owntv.core.sync.SyncResult
-import tv.own.owntv.core.util.classifySyncFailure
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import tv.own.owntv.ui.components.OwnTVSpinner
@@ -95,6 +94,12 @@ fun SyncStatusPill(modifier: Modifier = Modifier) {
 
     LaunchedEffect(lastCompleted) {
         val completed = lastCompleted ?: return@LaunchedEffect
+        // Lamassu: never toast a catalog failure — CPanel/Xtream expiry shows as "sync failed"
+        // even when the saved catalog is still usable. Success still gets a brief confirmation.
+        if (completed.result is SyncResult.Failed || completed.result is SyncResult.Cancelled) {
+            catalogTracker.consumeCompleted(completed.timestamp)
+            return@LaunchedEffect
+        }
         if (completedQueue.none { it.timestamp == completed.timestamp && it.sourceId == completed.sourceId }) {
             completedQueue.add(completed)
         }
@@ -363,15 +368,17 @@ private fun completedLine(completed: SyncActivityTracker.CompletedSync, online: 
                 add(pluralStringResource(R.plurals.sync_categories_removed, result.categoriesRemoved, result.categoriesRemoved))
             }
         }.joinToString(stringResource(R.string.sync_counts_separator))
-        if (changes.isBlank()) stringResource(R.string.sync_status_complete, completed.sourceName)
-        else stringResource(R.string.sync_status_complete_with_changes, completed.sourceName, changes)
+        // Lamassu: never show a provider host/URL as the source label.
+        val label = stringResource(R.string.app_name)
+        if (changes.isBlank()) stringResource(R.string.sync_status_complete, label)
+        else stringResource(R.string.sync_status_complete_with_changes, label, changes)
     }
+    // Lamassu: one clear line only — never "Sync failed · host: raw Xtream/CPanel text".
+    // (online is reserved if we later gate this message on connectivity.)
     is SyncResult.Failed -> stringResource(
-        R.string.sync_status_failed,
-        completed.sourceName,
-        classifySyncFailure(result.message, online).displayText(),
+        if (online) R.string.lamassu_sync_failed_clean else R.string.sync_error_offline,
     )
-    SyncResult.Cancelled -> stringResource(R.string.sync_status_cancelled, completed.sourceName)
+    SyncResult.Cancelled -> stringResource(R.string.sync_status_cancelled, stringResource(R.string.app_name))
 }
 
 @Composable

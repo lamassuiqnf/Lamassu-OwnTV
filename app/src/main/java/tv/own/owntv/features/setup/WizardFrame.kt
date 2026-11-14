@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -74,16 +75,24 @@ internal fun WizardFrame(
     if (onBack != null) BackHandler { onBack() }
     val a = stageAccent
     BoxWithConstraints(Modifier.fillMaxSize().stageBackground(a.accent)) {
-        // The OwnTV lockup: the play mark on its cream tile, the name beside it.
+        // Lamassu lockup: logo + name.
         Row(
             Modifier.padding(start = 64.mpx, top = 56.mpx),
             horizontalArrangement = Arrangement.spacedBy(14.mpx),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(44.mpx).background(LockupTile, RoundedCornerShape(12.mpx)), contentAlignment = Alignment.Center) {
-                OwnTVIcon(OwnTVIcon.PLAY, LockupMark, Modifier.size(22.mpx))
-            }
-            Text(stringResource(R.string.app_name), style = stageText(24, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(R.drawable.lamassu_logo),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier.size(44.mpx).clip(RoundedCornerShape(12.mpx)),
+            )
+            Text(
+                stringResource(R.string.app_name),
+                style = stageText(24, 800),
+                color = tv.own.owntv.lamassu.LamassuBrand.Orange,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         StepDots(step, Modifier.align(Alignment.TopEnd).padding(end = 64.mpx, top = 66.mpx))
 

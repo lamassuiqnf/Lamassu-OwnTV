@@ -574,6 +574,9 @@ fun LiveScreen(
     val panelOn by settingsVm.panelWidthEnabled.getValue(PanelSection.LIVE).collectAsStateWithLifecycle()
     val stageSaved by settingsVm.liveStageWidths.collectAsStateWithLifecycle()
     val stageWidths = stageSaved.takeIf { panelOn && !separate }
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr,
+    ) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -670,7 +673,7 @@ fun LiveScreen(
                         upSkip = chNavUpSkip,
                         downSkip = chNavDownSkip,
                         isFocused = { channelPaneFocused },
-                        longPressEnabled = { selectedKey != LiveKey.All },
+                        longPressEnabled = { false },
                         lastIndex = { channels.itemCount - 1 },
                         currentTargetIndex = {
                             val pc = previewChannel
@@ -721,38 +724,7 @@ fun LiveScreen(
                     }
                     .focusGroup(),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.mpx),
-                    modifier = Modifier.padding(start = 4.mpx).focusGroup(),
-                ) {
-                    tv.own.owntv.ui.stage.StageSearchField(
-                        query = searchQuery,
-                        onQueryChange = vm::setSearchQuery,
-                        onEditingChange = { searchEditing = it },
-                        placeholder = if (separate) stringResource(R.string.common_search) else stringResource(R.string.content_search_in, headerLabel),
-                        // The design's share of the list width, but never more than the two tools leave:
-                        // a narrow custom list shrinks the field, not "Guide view".
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .width(if (separate) listWidth * (230f / 620f) else listWidth * (456f / 846f))
-                            .focusRequester(listSearchFocus)
-                            // ◀ Categories from the search field too, as from the rows (not while typing — a search that found nothing here may be in another category).
-                            .onDpadLeft({ !searchEditing && lockedKey == null }) { openCategories() },
-                    )
-                    tv.own.owntv.ui.stage.StageTool(
-                        text = null,
-                        icon = OwnTVIcon.SORT,
-                        value = if (sortMode == tv.own.owntv.core.settings.SettingsRepository.SortMode.ALPHA) stringResource(R.string.settings_sort_alpha) else stringResource(R.string.content_epg_sort_provider),
-                        onClick = vm::toggleSort,
-                    )
-                    tv.own.owntv.ui.stage.StageTool(
-                        text = stringResource(R.string.content_live_guide_view),
-                        icon = OwnTVIcon.GRID,
-                        onClick = onOpenGuide,
-                    )
-                }
-                Spacer(Modifier.height(20.mpx))
+                Spacer(Modifier.height(8.mpx))
                 if (channels.itemCount == 0) {
                     Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                         tv.own.owntv.features.categorylock.CategoryEmptyState(
@@ -804,8 +776,8 @@ fun LiveScreen(
                                     name = parsed,
                                     // The channel under the cursor answers from the preview itself, so the row
                                     // and the stage beside it can never disagree.
-                                    now = if (isPreviewed) nowNext?.now ?: nowProgrammes[channel.id] else nowProgrammes[channel.id],
-                                    nowTitle = nowPlaying[channel.id],
+                                    now = null,
+                                    nowTitle = null,
                                     isFavorite = favoriteIds.contains(channel.id),
                                     showNumber = showChannelNumbers,
                                     mark = playlistMarks[channel.sourceId],
@@ -818,14 +790,13 @@ fun LiveScreen(
                                         if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                         when (e.key) {
                                             // The remote's Menu key opens the same menu as holding OK.
-                                            androidx.compose.ui.input.key.Key.Menu -> { contextChannel = channel; contextChannelId = channel.id; true }
+                                            androidx.compose.ui.input.key.Key.Menu -> false
                                             // ◀ Categories: the sheet (Stage) or the column (Separate); pinned lists have none.
                                             androidx.compose.ui.input.key.Key.DirectionLeft -> when {
                                                 lockedKey != null -> false
                                                 else -> { openCategories(); true }
                                             }
-                                            // ▶ Schedule: next / later under the stage; nothing else to the right.
-                                            androidx.compose.ui.input.key.Key.DirectionRight -> { runCatching { scheduleFocus.requestFocus() }; true }
+                                            androidx.compose.ui.input.key.Key.DirectionRight -> false
                                             // ▲/▼ step by row number, not by focus search: a held key outran the
                                             // lazy list at the edge or a page boundary and stopped.
                                             androidx.compose.ui.input.key.Key.DirectionDown -> (stepTarget ?: index).let { from -> from + 1 < channels.itemCount && run { stepTo(from + 1); true } }
@@ -841,7 +812,7 @@ fun LiveScreen(
                                         vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
                                         if (!externalPlayerOn) onFullscreen()
                                     },
-                                    onLongClick = { contextChannel = channel; contextChannelId = channel.id },
+                                    onLongClick = null,
                                 )
                             }
                         }
@@ -874,13 +845,9 @@ fun LiveScreen(
             LiveStagePane(
                 channel = previewChannel,
                 channelName = previewChannel?.let { ProviderTags.parse(it.name).name },
-                nowNext = nowNext,
                 previewEngine = vm.previewEngine,
                 showVideo = effectivePreview,
                 singleSessionBlocked = previewBlockedSingleSession,
-                scheduleFocus = scheduleFocus,
-                onOpenProgramme = { p -> previewChannel?.let { openProgramme = it to p } },
-                onBackToList = { focusCurrentRow() },
                 modifier = Modifier
                     .padding(start = screenW - margin - stageW, top = 120.mpx)
                     .width(stageW),
@@ -909,6 +876,8 @@ fun LiveScreen(
                     .fillMaxHeight(),
             )
         }
+    }
+
     }
 
     // A next / later programme opened from the schedule under the stage (▶ Schedule): the TV Guide's
@@ -1013,7 +982,7 @@ fun LiveScreen(
         ChannelContextMenu(
             channel = ch,
             title = ch.name,
-            subtitle = listOfNotNull(headerLabel, vm.sourceNameOf(ch.sourceId)).joinToString(" · "),
+            subtitle = headerLabel,
             isFavorite = favoriteIds.contains(ch.id),
             epgMatchManual = vm.currentEpgMatch(ch) != null,
             epgShiftMinutes = vm.currentEpgShift(ch),
@@ -1403,11 +1372,6 @@ internal fun EpgMatchDialog(
                     } else {
                         stringResource(R.string.content_epg_match_prompt, channelName)
                     },
-                )
-                tv.own.owntv.ui.stage.StageSearchField(
-                    query = query, onQueryChange = { query = it },
-                    placeholder = stringResource(R.string.content_search_guide_channels).trimEnd('…'),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.mpx).focusRequester(searchFocus),
                 )
                 Spacer(Modifier.height(12.mpx))
                 val list = results

@@ -1396,7 +1396,7 @@ class SeriesViewModel(
                     railItems.first { list -> list.any { it.key == saved } }
                 } != null
                 if (ok && _selected.value == LiveKey.All) _selected.value = saved
-            } else if (_selected.value == LiveKey.All) {
+            } else if (saved != LiveKey.Favorites && _selected.value == LiveKey.All) {
                 _selected.value = saved
             }
         }
@@ -1413,8 +1413,8 @@ class SeriesViewModel(
          * re-enters — which costs more requests than it saves.
          */
         const val GRID_DWELL_MS = 1_000L
+        // Lamassu: no Favorites category in the Series rail.
         val defaultRail = listOf(
-            LiveRailItem(LiveKey.Favorites, icon = OwnTVIcon.FAVORITE),
             LiveRailItem(LiveKey.All),
         )
     }

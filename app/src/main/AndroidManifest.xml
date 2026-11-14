@@ -45,15 +45,15 @@
     </queries>
 
     <application
-        android:name=".OwnTVApp"
+        android:name="com.iq.lamassu.LamassuApp"
         android:allowBackup="false"
-        android:banner="@drawable/owntv_banner_eggshell"
+        android:banner="@drawable/lamassu_banner"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/owntv_icon_eggshell"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:requestLegacyExternalStorage="true"
-        android:roundIcon="@mipmap/owntv_icon_eggshell"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.OwnTV"
         android:usesCleartextTraffic="true"
@@ -70,7 +70,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Disable WorkManager default auto-init; OwnTVApp provides Configuration. -->
+        <!-- Disable WorkManager default auto-init; LamassuApp provides Configuration. -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
@@ -85,7 +85,7 @@
         <!-- One launcher activity per icon colour (core's AppIcon); AppIconSwitcher keeps exactly one
              enabled. MainActivity is the default (Eggshell) and keeps its name, so an icon placed before this change still
              opens the app. Each carries its own icon, banner and launch-screen theme, and ALL intent
-             filters: a disabled activity resolves nothing, so the owntv:// links always reach the enabled
+             filters: a disabled activity resolves nothing, so the lamassu:// links always reach the enabled
              one. LEANBACK_LAUNCHER shows it on TV launchers; LAUNCHER on phone/tablet/box home screens.
              configChanges: a remote waking up (keyboard/navigation), an HDR or frame-rate mode switch
              (uiMode/colorMode/screen*) or a density change must not rebuild the Activity mid-film — that
@@ -95,14 +95,15 @@
              the window resizes the activity, which screenSize|smallestScreenSize|screenLayout keep alive. -->
         <activity
             android:name=".MainActivityPetrol"
-            android:banner="@drawable/owntv_banner_petrol"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_petrol"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_petrol"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Petrol"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -116,23 +117,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".MainActivitySunflower"
-            android:banner="@drawable/owntv_banner_sunflower"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_sunflower"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_sunflower"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Sunflower"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -146,23 +148,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".MainActivityCobalt"
-            android:banner="@drawable/owntv_banner_cobalt"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_cobalt"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_cobalt"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Cobalt"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -176,23 +179,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".MainActivityTomato"
-            android:banner="@drawable/owntv_banner_tomato"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_tomato"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_tomato"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Tomato"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -206,23 +210,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".MainActivityBoard"
-            android:banner="@drawable/owntv_banner_board"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_board"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_board"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Board"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -236,23 +241,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".MainActivity"
-            android:banner="@drawable/owntv_banner_eggshell"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="true"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_eggshell"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_eggshell"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Eggshell"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -266,23 +272,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".MainActivityOlive"
-            android:banner="@drawable/owntv_banner_olive"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_olive"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_olive"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Olive"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -296,23 +303,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
         <activity
             android:name=".MainActivityOliveCream"
-            android:banner="@drawable/owntv_banner_olive_cream"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_olive_cream"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_olive_cream"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.OliveCream"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -326,24 +334,25 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 
 
         <activity
             android:name=".MainActivityPixel"
-            android:banner="@drawable/owntv_banner_pixel"
+            android:label="@string/app_name"
+            android:banner="@drawable/lamassu_banner"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/owntv_icon_pixel"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
-            android:roundIcon="@mipmap/owntv_icon_pixel"
+            android:roundIcon="@mipmap/ic_launcher"
             android:theme="@style/Theme.OwnTV.Starting.Pixel"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
@@ -357,10 +366,10 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="play"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
                 <data
                     android:host="open"
-                    android:scheme="owntv" />
+                    android:scheme="lamassu" />
             </intent-filter>
         </activity>
 

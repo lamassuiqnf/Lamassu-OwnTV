@@ -104,7 +104,7 @@ class EntitlementApiClient(okHttpClient: OkHttpClient) {
                 .header("Content-Type", "application/json")
                 .header("Cache-Control", "no-cache")
                 .header("X-Install-Id", installId)
-                .header("User-Agent", "Lamassu-OwnTV/${BuildConfig.VERSION_NAME}")
+                .header("User-Agent", "Lamassu/${BuildConfig.VERSION_NAME}")
                 .post(body.toString().toRequestBody(JSON_MEDIA))
                 .build()
             client.newCall(request).execute().use { response ->
@@ -132,12 +132,14 @@ class EntitlementApiClient(okHttpClient: OkHttpClient) {
                 .url(url)
                 .header("Accept", "application/json")
                 .header("Cache-Control", "no-cache")
-                .header("User-Agent", "Lamassu-OwnTV/${BuildConfig.VERSION_NAME}")
+                .header("User-Agent", "Lamassu/${BuildConfig.VERSION_NAME}")
                 .get()
                 .build()
             client.newCall(request).execute().use { response ->
                 val text = response.body?.string().orEmpty()
-                if (!response.isSuccessful) return ApiResult.Error("HTTP ${response.code}")
+                if (!response.isSuccessful) {
+                    return ApiResult.Error(CustomerFacingText.sanitize("HTTP ${response.code}"))
+                }
                 ApiResult.Success(JSONObject(text))
             }
         } catch (e: Exception) {
@@ -154,7 +156,7 @@ class EntitlementApiClient(okHttpClient: OkHttpClient) {
         is ApiResult.Success -> try {
             ApiResult.Success(block(data))
         } catch (e: Exception) {
-            ApiResult.Error(e.message ?: "parse", e)
+            ApiResult.Error(CustomerFacingText.sanitize(e.message), e)
         }
         is ApiResult.Error -> ApiResult.Error(message, exception)
     }
@@ -196,6 +198,12 @@ class EntitlementApiClient(okHttpClient: OkHttpClient) {
                 allowLive = perms?.optBoolean("allow_live", true) ?: true,
                 allowMovies = perms?.optBoolean("allow_movies", true) ?: true,
                 allowSeries = perms?.optBoolean("allow_series", true) ?: true,
+                liveCategoryAllowlist = perms.stringList("live_category_allowlist"),
+                liveStreamAllowlist = perms.stringList("live_stream_allowlist"),
+                movieCategoryAllowlist = perms.stringList("movie_category_allowlist"),
+                movieStreamAllowlist = perms.stringList("movie_stream_allowlist"),
+                seriesCategoryAllowlist = perms.stringList("series_category_allowlist"),
+                seriesStreamAllowlist = perms.stringList("series_stream_allowlist"),
             ),
             overlays = parseOverlays(json.optJSONArray("overlays")),
             provider = provider?.takeIf { it.has("host") }?.let {
@@ -260,6 +268,26 @@ class EntitlementApiClient(okHttpClient: OkHttpClient) {
                         containerExtension = item.optString("container_extension"),
                     ),
                 )
+            }
+        }
+    }
+
+    /**
+     * Prefer raw JSON values — Android [org.json.JSONArray.optString] can drop numeric elements,
+     * which would empty CPanel stream/category allowlists (AnotherIPTV parity).
+     */
+    private fun org.json.JSONObject?.stringList(key: String): List<String> {
+        if (this == null || !has(key)) return emptyList()
+        val arr = optJSONArray(key) ?: return emptyList()
+        return buildList {
+            for (i in 0 until arr.length()) {
+                val raw = arr.opt(i) ?: continue
+                val v = when (raw) {
+                    is String -> raw.trim()
+                    is Number -> raw.toString()
+                    else -> raw.toString().trim()
+                }
+                if (v.isNotBlank() && v != "null") add(v)
             }
         }
     }

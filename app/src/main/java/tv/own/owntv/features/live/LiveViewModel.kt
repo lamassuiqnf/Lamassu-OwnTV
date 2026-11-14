@@ -886,7 +886,11 @@ class LiveViewModel(
                     railItems.first { list -> list.any { it.key == saved } }
                 } != null
                 if (ok && _selected.value == LiveKey.All) _selected.value = saved
-            } else if (_selected.value == LiveKey.All) {
+            } else if (
+                saved != LiveKey.Favorites &&
+                saved != LiveKey.History &&
+                _selected.value == LiveKey.All
+            ) {
                 _selected.value = saved
             }
         }
@@ -2156,18 +2160,15 @@ class LiveViewModel(
 
         // The CH+/- timing constants (ZAP_TUNE_DELAY_MS, ZAP_ISOLATED_PRESS_MS) live in ZapTuneDelay.kt.
         const val HISTORY_LIST_LIMIT = 30
+        // Lamassu: no Favorites category in the rail — CPanel folders + All (+ Catch-up when present).
         val defaultRail = listOf(
-            LiveRailItem(LiveKey.Favorites, icon = OwnTVIcon.FAVORITE),
             LiveRailItem(LiveKey.All),
         )
 
         /** [defaultRail] with the Catch-up entry inserted before All when [hasCatchup]. */
         fun railWithCatchup(hasCatchup: Boolean): List<LiveRailItem> =
             if (!hasCatchup) defaultRail
-            // CATCHUP (a TV with a replay loop), not EPG or a calendar: this rail is the guide-free
-            // route, and a calendar next to Favorites/History would read as "schedule" — the one thing
-            // it deliberately is not.
-            else defaultRail.dropLast(1) + LiveRailItem(LiveKey.Catchup, icon = OwnTVIcon.CATCHUP) + defaultRail.last()
+            else listOf(LiveRailItem(LiveKey.Catchup, icon = OwnTVIcon.CATCHUP)) + defaultRail
         const val ZAP_WINDOW_HALF = 50 // channels loaded on each side of the tuned channel for CH+/-
         /**
          * How long a channel that HAS played may stay stalled before it goes to mpv — see

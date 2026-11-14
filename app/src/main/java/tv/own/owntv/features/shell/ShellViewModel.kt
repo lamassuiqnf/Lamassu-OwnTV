@@ -55,6 +55,7 @@ class ShellViewModel(
     private val importFinalizer: tv.own.owntv.core.sync.ImportFinalizer,
     private val categoryUnlocks: CategoryUnlockSession,
     private val customize: CustomizationStore,
+    private val entitlementAccess: tv.own.owntv.lamassu.EntitlementAccessStore,
 ) : ViewModel() {
 
     companion object {
@@ -257,10 +258,20 @@ class ShellViewModel(
     fun sectionToLeaveLockedSettings(): MainSection =
         sectionAfterLockedSettings(sectionBeforeSettings, visibleSections.value)
 
-    /** Which browse sections currently show as icons in the rail (v4.3.0 — Nav menu customization).
-     *  The rule itself lives in core's [NavVisibility], shared with the mobile app's bottom bar. */
-    val visibleSections: StateFlow<Set<MainSection>> = navVisibility.visibleSections()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainSection.allBrowse)
+    /** Browse sections on the rail: OwnTV nav visibility ∩ CPanel allow_live/movies/series. */
+    val visibleSections: StateFlow<Set<MainSection>> = combine(
+        navVisibility.visibleSections(),
+        entitlementAccess.access,
+    ) { nav, access ->
+        nav.filter { section ->
+            when (section) {
+                MainSection.LIVE_TV -> access.allowLive
+                MainSection.MOVIES -> access.allowMovies
+                MainSection.SERIES -> access.allowSeries
+                else -> true
+            }
+        }.toSet()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainSection.allBrowse)
 
     init {
         // v4.3.0 — if the section the user is viewing becomes hidden (in either mode), jump to the first

@@ -3,6 +3,7 @@ package tv.own.owntv.lamassu
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 
 class EntitlementCacheStore(context: Context) {
@@ -37,8 +38,15 @@ class EntitlementCacheStore(context: Context) {
             JSONObject()
                 .put("allow_live", s.permissions.allowLive)
                 .put("allow_movies", s.permissions.allowMovies)
-                .put("allow_series", s.permissions.allowSeries),
+                .put("allow_series", s.permissions.allowSeries)
+                .put("live_category_allowlist", JSONArray(s.permissions.liveCategoryAllowlist))
+                .put("live_stream_allowlist", JSONArray(s.permissions.liveStreamAllowlist))
+                .put("movie_category_allowlist", JSONArray(s.permissions.movieCategoryAllowlist))
+                .put("movie_stream_allowlist", JSONArray(s.permissions.movieStreamAllowlist))
+                .put("series_category_allowlist", JSONArray(s.permissions.seriesCategoryAllowlist))
+                .put("series_stream_allowlist", JSONArray(s.permissions.seriesStreamAllowlist)),
         )
+        .put("overlays", encodeOverlays(s.overlays))
         .put(
             "provider",
             s.provider?.let {
@@ -63,6 +71,27 @@ class EntitlementCacheStore(context: Context) {
         )
         .put("fetched_at_ms", s.fetchedAtMs)
 
+    private fun encodeOverlays(overlays: List<ContentOverlayDto>): JSONArray {
+        val arr = JSONArray()
+        overlays.forEach { o ->
+            arr.put(
+                JSONObject()
+                    .put("content_type", o.contentType)
+                    .put("external_id", o.externalId)
+                    .put("custom_title", o.customTitle)
+                    .put("custom_logo_url", o.customLogoUrl)
+                    .put("sort_order", o.sortOrder)
+                    .put("visibility", o.visibility)
+                    .put("locked", o.locked)
+                    .put("locked_for_free", o.lockedForFree)
+                    .put("stream_url", o.streamUrl)
+                    .put("category_external_id", o.categoryExternalId)
+                    .put("container_extension", o.containerExtension),
+            )
+        }
+        return arr
+    }
+
     private fun decode(json: JSONObject): EntitlementSnapshot {
         val perms = json.optJSONObject("permissions")
         val provider = json.optJSONObject("provider")
@@ -81,7 +110,14 @@ class EntitlementCacheStore(context: Context) {
                 allowLive = perms?.optBoolean("allow_live", true) ?: true,
                 allowMovies = perms?.optBoolean("allow_movies", true) ?: true,
                 allowSeries = perms?.optBoolean("allow_series", true) ?: true,
+                liveCategoryAllowlist = perms.stringList("live_category_allowlist"),
+                liveStreamAllowlist = perms.stringList("live_stream_allowlist"),
+                movieCategoryAllowlist = perms.stringList("movie_category_allowlist"),
+                movieStreamAllowlist = perms.stringList("movie_stream_allowlist"),
+                seriesCategoryAllowlist = perms.stringList("series_category_allowlist"),
+                seriesStreamAllowlist = perms.stringList("series_stream_allowlist"),
             ),
+            overlays = decodeOverlays(json.optJSONArray("overlays")),
             provider = provider?.takeIf { it.has("host") }?.let {
                 val host = it.optString("host")
                 ManagedProviderCredentials(
@@ -108,6 +144,55 @@ class EntitlementCacheStore(context: Context) {
             ),
             fetchedAtMs = json.optLong("fetched_at_ms", 0L),
         )
+    }
+
+    private fun decodeOverlays(arr: JSONArray?): List<ContentOverlayDto> {
+        if (arr == null) return emptyList()
+        return buildList {
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: continue
+                val type = item.optString("content_type").trim()
+                val ext = item.optString("external_id").trim()
+                if (type.isBlank() || ext.isBlank()) continue
+                add(
+                    ContentOverlayDto(
+                        contentType = type,
+                        externalId = ext,
+                        customTitle = item.optString("custom_title"),
+                        customLogoUrl = item.optString("custom_logo_url"),
+                        sortOrder = if (item.has("sort_order") && !item.isNull("sort_order")) {
+                            item.optInt("sort_order")
+                        } else {
+                            null
+                        },
+                        visibility = item.optString("visibility", "both").ifBlank { "both" },
+                        locked = item.optBoolean("locked", false),
+                        lockedForFree = item.optBoolean("locked_for_free", false),
+                        streamUrl = item.optString("stream_url"),
+                        categoryExternalId = item.optString("category_external_id")
+                            .takeIf { it.isNotBlank() },
+                        containerExtension = item.optString("container_extension"),
+                    ),
+                )
+            }
+        }
+    }
+
+    /** Number-safe allowlist decode — mirrors AnotherIPTV / [EntitlementApiClient]. */
+    private fun JSONObject?.stringList(key: String): List<String> {
+        if (this == null || !has(key)) return emptyList()
+        val arr = optJSONArray(key) ?: return emptyList()
+        return buildList {
+            for (i in 0 until arr.length()) {
+                val raw = arr.opt(i) ?: continue
+                val v = when (raw) {
+                    is String -> raw.trim()
+                    is Number -> raw.toString()
+                    else -> raw.toString().trim()
+                }
+                if (v.isNotBlank() && v != "null") add(v)
+            }
+        }
     }
 
     companion object {

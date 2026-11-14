@@ -1081,7 +1081,7 @@ class MovieViewModel(
                     railItems.first { list -> list.any { it.key == saved } }
                 } != null
                 if (ok && _selected.value == LiveKey.All) _selected.value = saved
-            } else if (_selected.value == LiveKey.All) {
+            } else if (saved != LiveKey.Favorites && _selected.value == LiveKey.All) {
                 _selected.value = saved
             }
         }
@@ -1089,8 +1089,8 @@ class MovieViewModel(
 
     private companion object {
         const val TAG = "OwnTVHome"
+        // Lamassu: no Favorites category in the Movies rail.
         val defaultRail = listOf(
-            LiveRailItem(LiveKey.Favorites, icon = OwnTVIcon.FAVORITE),
             LiveRailItem(LiveKey.All),
         )
     }

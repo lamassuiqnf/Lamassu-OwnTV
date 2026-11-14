@@ -17,7 +17,6 @@
 1	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	hid:${entry.key}
 1	app/src/main/java/tv/own/owntv/features/customize/CustomizeViewModel.kt	Custom
 1	app/src/main/java/tv/own/owntv/features/customize/MoveToCategoryDialog.kt	new
-1	app/src/main/java/tv/own/owntv/features/home/HomeScreen.kt	lamassu_banners
 8	app/src/main/java/tv/own/owntv/features/settings/DnsSettingsScreen.kt	\0
 1	app/src/main/java/tv/own/owntv/features/settings/DnsSettingsScreen.kt	${cfg.host}$p
 1	app/src/main/java/tv/own/owntv/features/settings/DnsSettingsScreen.kt	:${cfg.port}
@@ -45,16 +44,13 @@
 1	app/src/main/java/tv/own/owntv/lamassu/ContentOverlayStore.kt	hidden
 2	app/src/main/java/tv/own/owntv/lamassu/ContentOverlayStore.kt	none
 5	app/src/main/java/tv/own/owntv/lamassu/ContentOverlayStore.kt	subscription
-3	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	\0
+7	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	\0
+1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	(?i)/(?:live|movie|series)/[^/\\s]+/[^/\\s]+/
+1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	(?i)\\b(?:(?:\\d{1,3}\\.){3}\\d{1,3}|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|tv|xyz|online|live|iptv|info|cc|me|app|dev|cloud|site))(?::\\d{2,5})?\\b
+1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	(?i)\\b(?:password|passwd|pass|pwd|username|user|login|host|server|url|token|mac|device_id)\\b\\s*[:=]\\s*[^\\s,;|/]+
 1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	Could not reach the server
 1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	\\s+
-1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	cpanel
 1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	https?://[^\\s<>"']+
-1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	lamassucpanel
-1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	netlify
-1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	pszvbcbhbchvtorzzzgg
-1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	streamvault
-1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	supabase
 1	app/src/main/java/tv/own/owntv/lamassu/CustomerFacingText.kt	|
 5	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	\0
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	$baseUrl/api/v1/config
@@ -69,13 +65,9 @@
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	Could not reach the server
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	HTTP ${response.code}
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	Lamassu
-2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	Lamassu-OwnTV/${BuildConfig.VERSION_NAME}
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	User-Agent
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	X-Install-Id
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	activated_at
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	allow_live
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	allow_movies
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	allow_series
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	announcement
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	app_name
 3	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	app_version_code
@@ -83,19 +75,13 @@
 3	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	application/json
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	application/json; charset=utf-8
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	banner_interval
-2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	both
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	category_external_id
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	both
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	code
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	code_id
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	code_prefix
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	container_extension
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	content_type
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	custom_logo_url
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	custom_title
 3	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	device_fingerprint
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	error
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	expires_at
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	external_id
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	free
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	free_mode_enabled
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	grace_period_hours
@@ -107,8 +93,7 @@
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	key
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	label_ar
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	label_en
-2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	locked
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	locked_for_free
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	locked
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	maintenance_mode
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	managed_only_providers
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	max_devices
@@ -119,8 +104,6 @@
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	name
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	no-cache
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	none
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	overlays
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	parse
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	password
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	permissions
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	plans
@@ -128,9 +111,8 @@
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	provider
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	remaining_devices
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	settings
-3	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	sort_order
+2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	sort_order
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	status
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	stream_url
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	subscription
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	subscription_enabled
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	subscription_prices
@@ -140,14 +122,13 @@
 3	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	use_https
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	used_devices
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	username
-1	app/src/main/java/tv/own/owntv/lamassu/EntitlementApiClient.kt	visibility
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	\0
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	@alnafawa
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	Lamassu
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	activated_at
-2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	allow_live
-2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	allow_movies
-2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	allow_series
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	allow_live
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	allow_movies
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	allow_series
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	banner_interval
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	code_id
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	code_prefix
@@ -176,6 +157,12 @@
 4	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	use_https
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	used_devices
 2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCacheStore.kt	username
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCoordinator.kt	category
+2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCoordinator.kt	live
+2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCoordinator.kt	movie
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCoordinator.kt	overlays=${snap.overlays.size} provider=${snap.provider?.host.orEmpty()}
+1	app/src/main/java/tv/own/owntv/lamassu/EntitlementCoordinator.kt	panel catalog ($label): seeded=$seeded liveOverlays=$liveOverlays
+2	app/src/main/java/tv/own/owntv/lamassu/EntitlementCoordinator.kt	series
 5	app/src/main/java/tv/own/owntv/lamassu/EntitlementModels.kt	\0
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementModels.kt	$h:$port
 1	app/src/main/java/tv/own/owntv/lamassu/EntitlementModels.kt	/
@@ -212,7 +199,6 @@
 1	app/src/main/java/tv/own/owntv/lamassu/HomeContentRepository.kt	section-$i
 1	app/src/main/java/tv/own/owntv/lamassu/HomeContentRepository.kt	sections
 2	app/src/main/java/tv/own/owntv/lamassu/HomeContentRepository.kt	sort_order
-3	app/src/main/java/tv/own/owntv/lamassu/HomeContentRepository.kt	subscription
 1	app/src/main/java/tv/own/owntv/lamassu/HomeContentRepository.kt	subtitle
 2	app/src/main/java/tv/own/owntv/lamassu/HomeContentRepository.kt	title
 1	app/src/main/java/tv/own/owntv/lamassu/HomeModels.kt	all
@@ -224,6 +210,24 @@
 1	app/src/main/java/tv/own/owntv/lamassu/InstallIdStore.kt	lamassu_install_id
 1	app/src/main/java/tv/own/owntv/lamassu/LamassuBootstrap.kt	lamassu_profile_avatar.png
 1	app/src/main/java/tv/own/owntv/lamassu/LamassuBrand.kt	#FF9500
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	UNUSED_PARAMETER
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	both
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	free
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	hidden
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	live
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	movie
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	none
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	series
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuCatalogApplicator.kt	subscription
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuExportIds.kt	\0
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuOverlayCatalogSeeder.kt	${type.name.lowercase()}:$remote
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuOverlayCatalogSeeder.kt	free
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuOverlayCatalogSeeder.kt	http://
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuOverlayCatalogSeeder.kt	https://
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuOverlayCatalogSeeder.kt	live
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuOverlayCatalogSeeder.kt	movie
+1	app/src/main/java/tv/own/owntv/lamassu/LamassuOverlayCatalogSeeder.kt	series
+1	app/src/main/java/tv/own/owntv/lamassu/ManagedSourceProvisioner.kt	UNUSED_PARAMETER
 1	app/src/main/java/tv/own/owntv/ui/components/ColorPicker.kt	#%06X
 1	app/src/main/java/tv/own/owntv/ui/components/TextInputDialog.kt	\0
 1	app/src/main/java/tv/own/owntv/ui/components/TvImeMetrics.kt	$trigger visible=${next.visible} source=${next.source} displayH=$displayHeight

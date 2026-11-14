@@ -426,9 +426,9 @@ fun PlayerHud(
             focusSeekOnShow = false
             when {
                 error != null -> runCatching { retryFocus.requestFocus() }
-                // Falls back to Play when no timeline is drawn after all (no duration yet, say).
-                toSeek -> runCatching { seekFocus.requestFocus() }.onFailure { runCatching { playFocus.requestFocus() } }
-                else -> runCatching { playFocus.requestFocus() }
+                // Lamassu has no centre Play button — land on the seek/timeline when present.
+                toSeek -> runCatching { seekFocus.requestFocus() }.onFailure { runCatching { catchFocus.requestFocus() } }
+                else -> runCatching { seekFocus.requestFocus() }.onFailure { runCatching { catchFocus.requestFocus() } }
             }
         } else runCatching { catchFocus.requestFocus() }
     }
@@ -564,26 +564,7 @@ fun PlayerHud(
                 canZap && e.key == Key.MediaPrevious -> { zap(-1); true }
                 canZap && isLive && !controlsVisible && e.key == Key.DirectionUp -> { zap(zapDirection(up = true, remoteOptions)); true }
                 canZap && isLive && !controlsVisible && e.key == Key.DirectionDown -> { zap(zapDirection(up = false, remoteOptions)); true }
-                // Left/Right with the controls hidden: reveal them on the timeline and take the first
-                // step, so the jump is seen and holding the key goes on scrubbing the bar itself. Physical
-                // keys, like the bars: left is back in time in every locale. A film always does this; a
-                // live channel only with its archive and the setting on — otherwise the lists below.
-                // Decided in the bottom bar's own order: a channel with an archive draws the live timeline
-                // even while rewound (when the engine is playing a file and calls it not live), so that
-                // is what the keys scrub; only without one does a film's seek bar apply.
-                !controlsVisible && error == null && (e.key == Key.DirectionLeft || e.key == Key.DirectionRight) &&
-                    (if (onScrubLive != null) liveLeftRightRewinds else !isLive && duration > 0L) -> {
-                    val back = e.key == Key.DirectionLeft
-                    if (onScrubLive != null) {
-                        onScrubLive(if (back) LIVE_SCRUB_STEP_SEC else -LIVE_SCRUB_STEP_SEC)
-                    } else {
-                        val step = player.seekStepMs.value
-                        player.seekBy(if (back) -step else step)
-                    }
-                    focusSeekOnShow = true
-                    controlsVisible = true
-                    true
-                }
+                // Lamassu: no ±seek via D-pad. Left/Right with controls hidden open channel lists only.
                 // The category list lives at logical Start; history lives at logical End.
                 onOpenChannelList != null && !controlsVisible &&
                     e.key.horizontalDirection(layoutDirection) == HorizontalDirection.START -> { onOpenChannelList(); true }
@@ -676,18 +657,13 @@ fun PlayerHud(
                 modifier = Modifier.align(Alignment.TopStart),
                 below = matchLine,
                 trailing = if (error == null) liveEpgCard else null,
-                // Hidden behind an error overlay along with the rest of the chrome: a clock ticking
-                // over a failure message just draws the eye to the wrong thing.
-                centre = if (error == null) {
-                    { PlayerClock(watchingMs = watchingWallMs?.invoke()) }
-                } else null,
+                // Lamassu: no centre clock on the player HUD.
+                centre = null,
             )
 
-            // Hide the transport (play/seek/prev/next) and bottom bar while an error is up — the error
-            // overlay owns the screen with its own Retry, so the play/rewind/forward must not show behind it.
+            // Lamassu: no pause / ±seek centre transport. Bottom bar stays for live tools.
+            // Hide the bottom bar while an error is up — the error overlay owns Retry.
             if (error == null) {
-                CenterControls(player, nav, isPlaying, isLive, onRewindLive, onForwardLive, timeshiftOffset, playFocus, modifier = Modifier.align(Alignment.Center))
-
                 val reportDuration = duration.takeIf { it > 0 }?.let { formatTime(it) }
                 val reportSavedMessage = stringResource(R.string.player_report_saved)
 
@@ -774,23 +750,34 @@ fun PlayerHud(
             error != null -> Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.player_playback_error), style = tv.own.owntv.ui.theme.stageText(40, 600), color = Color.White)
                 Spacer(Modifier.height(8.dp))
-                error?.let {
-                    Text(it.displayText(), style = tv.own.owntv.ui.theme.stageText(25, 400), color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center)
-                }
-                // Structured technical detail so a user can report the real cause without adb/logcat:
-                // plain reason → media spec (codec • resolution • decoder) → raw engine/codec line.
-                errorInfo?.let { info ->
-                    info.reason?.let {
+                // Lamassu: customer-safe copy only — never host/user/pass/Xtream/raw engine URLs.
+                val safeDetail = tv.own.owntv.lamassu.CustomerFacingText.sanitize(
+                    error?.displayText(),
+                    fallback = stringResource(R.string.lamassu_error_generic),
+                )
+                Text(
+                    safeDetail,
+                    style = tv.own.owntv.ui.theme.stageText(25, 400),
+                    color = Color.White.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                )
+                // Keep reason text only when it stays clean after sanitize; drop raw/spec leaks.
+                errorInfo?.reason?.let { reason ->
+                    val reasonText = reason.displayText()
+                    // Only keep reason when it is already customer-safe (no host/pass/Xtream residue).
+                    if (
+                        tv.own.owntv.lamassu.CustomerFacingText.isAlreadySafe(reasonText) &&
+                        reasonText != safeDetail
+                    ) {
                         Spacer(Modifier.height(8.dp))
-                        Text(it.displayText(), style = tv.own.owntv.ui.theme.stageText(25, 400), color = Color.White.copy(alpha = 0.92f), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(0.8f))
-                    }
-                    info.spec?.let {
-                        Spacer(Modifier.height(4.dp))
-                        Text(it.displayText(), style = tv.own.owntv.ui.theme.stageText(22, 700), color = Color.White.copy(alpha = 0.55f), textAlign = TextAlign.Center)
-                    }
-                    info.raw?.takeIf { it.isNotBlank() }?.let {
-                        Spacer(Modifier.height(4.dp))
-                        Text(stringResource(R.string.player_raw_error, it), style = tv.own.owntv.ui.theme.stageText(22, 400), color = Color.White.copy(alpha = 0.6f), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(0.8f))
+                        Text(
+                            reasonText,
+                            style = tv.own.owntv.ui.theme.stageText(25, 400),
+                            color = Color.White.copy(alpha = 0.92f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(0.8f),
+                        )
                     }
                 }
                 // While a recording is what took the picture away, this screen has TWO buttons
